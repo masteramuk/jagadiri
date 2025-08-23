@@ -6,6 +6,9 @@ import 'package:jagadiri/services/database_service.dart';
 import 'package:jagadiri/utils/app_themes.dart';
 import 'package:jagadiri/providers/theme_provider.dart';
 import 'package:jagadiri/utils/unit_converter.dart';
+import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -44,6 +47,35 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       'icon': Icons.whatshot,
     },
   };
+
+  final List<String> _motivationalQuotes = [
+    "The last three or four reps is what makes the muscle grow. This area of pain divides a champion from someone who is not a champion.",
+    "Success isn't always about greatness. It's about consistency. Consistent hard work gains success. Greatness will come.",
+    "If it doesn't challenge you, it won't change you.",
+    "The only bad workout is the one that didn't happen.",
+    "You don't have to be extreme. Just consistent.",
+    "A little progress each day adds up to big results.",
+    "Take care of your body. It's the only place you have to live.",
+    "A healthy outside starts from the inside.",
+    "Believe you can, and you're halfway there.",
+    "Your body hears everything your mind says.",
+    "The body achieves what the mind believes.",
+  ];
+
+  final List<String> _healthyLifestyleTips = [
+    "Eat a variety of foods, including fruits, vegetables, and whole grains.",
+    "Base your meals on high-fiber carbohydrates like potatoes, bread, rice, and pasta.",
+    "Choose healthy fats from sources like avocados, nuts, and olive oil.",
+    "Limit your intake of sugar and salt.",
+    "Stay hydrated by drinking plenty of water throughout the day.",
+    "Start slowly with exercise and gradually increase the intensity and duration.",
+    "Find physical activities you enjoy to make your routine more sustainable.",
+    "Incorporate strength training into your routine at least twice a week.",
+    "Listen to your body and take rest days when you need them.",
+    "Connect with others to improve your mental well-being.",
+    "Aim for 7-9 hours of quality sleep per night.",
+    "Practice mindfulness to reduce stress and improve self-awareness.",
+  ];
 
   UserProfile? _userProfile;
   String _selectedThemeName = 'Light';
@@ -117,28 +149,55 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return 'Obesity III (Morbid)'; // bmi ≥ 40
   } // End of _getBMICategory method
 
-  String _getAdvice(UserProfile profile) {
-    String advice =
-        'General advice: Maintain a balanced diet and regular exercise.';
+  Future<String> _fetchOnlineAdvice() async {
+    try {
+      // I will use a placeholder that returns a simple string.
+      // In a real application, this would be a call to a real API.
+      final response = await http.get(Uri.parse('https://api.quotable.io/random'));
+      if (response.statusCode == 200) {
+        // a simple api that returns a json with a quote
+        final data = json.decode(response.body);
+        return data['content'];
+      } else {
+        throw Exception('Failed to load online advice');
+      }
+    } catch (e) {
+      throw Exception('Failed to load online advice');
+    }
+  }
+
+  Future<String> _getAdvice(UserProfile profile) async {
+    String advice = '';
+    try {
+      advice = await _fetchOnlineAdvice();
+    } catch (e) {
+      // Fallback to local lists
+      final random = Random();
+      advice += 'Quote of the day: "${_motivationalQuotes[random.nextInt(_motivationalQuotes.length)]}"\n\n';
+      advice += 'Tip of the day: "${_healthyLifestyleTips[random.nextInt(_healthyLifestyleTips.length)]}"';
+    }
+
+    String baseAdvice = '';
     if (profile.bmi < 18.5) {
-      advice =
-      'You are underweight. Consider consulting a doctor or nutritionist to gain weight healthily.';
+      baseAdvice =
+      'You are underweight. Consider consulting a doctor or nutritionist to gain weight healthily.\n\n';
     } else if (profile.bmi >= 25) {
-      advice =
-      'You are overweight or obese. Focus on a calorie-controlled diet and increased physical activity.';
+      baseAdvice =
+      'You are overweight or obese. Focus on a calorie-controlled diet and increased physical activity.\n\n';
     }
 
     if (profile.weight > profile.targetWeight) {
-      advice +=
-      ' You are currently above your target weight. Focus on gradual weight loss.';
+      baseAdvice +=
+      'You are currently above your target weight. Focus on gradual weight loss.\n\n';
     } else if (profile.weight < profile.targetWeight) {
-      advice +=
-      ' You are currently below your target weight. Ensure healthy weight gain if that is your goal.';
+      baseAdvice += 
+      'You are currently below your target weight. Ensure healthy weight gain if that is your goal.\n\n';
     } else {
-      advice +=
-      ' You are at your target weight. Great job! Maintain your healthy habits.';
+      baseAdvice += 
+      'You are at your target weight. Great job! Maintain your healthy habits.\n\n';
     }
-    return advice;
+
+    return baseAdvice + advice;
   } // End of _getAdvice method
 
   int _getAge(DateTime dob) {
@@ -633,7 +692,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                     .bodyMedium
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
-                              Text(_getAdvice(_userProfile!)),
+                              FutureBuilder<String>(
+                                future: _getAdvice(_userProfile!),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  } else if (snapshot.hasError) {
+                                    return const Text('Could not load advice.');
+                                  } else {
+                                    return Text(snapshot.data ?? '');
+                                  }
+                                },
+                              ),
                             ], // End of if _userProfile != null
                           ], // End of children of Column
                       ), // End of Padding
