@@ -22,9 +22,34 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   late TextEditingController _weightController;
   late TextEditingController _targetWeightController;
 
+  final Map<String, Map<String, dynamic>> _exerciseFrequencyOptions = {
+    'Sedentary': {
+      'description': 'Little or no exercise',
+      'icon': Icons.weekend,
+    },
+    'Light': {
+      'description': 'Light exercise/sports 1-3 days/week',
+      'icon': Icons.directions_walk,
+    },
+    'Moderate': {
+      'description': 'Moderate exercise/sports 3-5 days/week',
+      'icon': Icons.directions_run,
+    },
+    'Active': {
+      'description': 'Hard exercise/sports 6-7 days a week',
+      'icon': Icons.fitness_center,
+    },
+    'Very Active': {
+      'description': 'Very hard exercise/sports & physical job',
+      'icon': Icons.whatshot,
+    },
+  };
+
   UserProfile? _userProfile;
   String _selectedThemeName = 'Light';
   String _selectedMeasurementUnit = 'Metric';
+  String? _selectedGender;
+  String? _selectedExerciseFrequency;
 
   @override
   void initState() {
@@ -63,6 +88,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _weightController.text = _userProfile!.weight.toStringAsFixed(1);
       _targetWeightController.text =
           _userProfile!.targetWeight.toStringAsFixed(1);
+      _selectedGender = _userProfile!.gender;
+      _selectedExerciseFrequency = _userProfile!.exerciseFrequency;
     }
     setState(() {});
   }// End of _loadSettings method
@@ -216,6 +243,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         weight: double.parse(_weightController.text),
         targetWeight: double.parse(_targetWeightController.text),
         measurementUnit: _selectedMeasurementUnit,
+        gender: _selectedGender,
+        exerciseFrequency: _selectedExerciseFrequency,
       );
 
       final age = _getAge(newProfile.dob);
@@ -252,6 +281,32 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       }
     }
   }// End of _saveSettings method
+
+  void _showExerciseFrequencyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: const Text('Select Exercise Frequency'),
+          children: _exerciseFrequencyOptions.keys.map((String key) {
+            return SimpleDialogOption(
+              onPressed: () {
+                setState(() {
+                  _selectedExerciseFrequency = key;
+                });
+                Navigator.pop(context);
+              },
+              child: ListTile(
+                leading: Icon(_exerciseFrequencyOptions[key]!['icon']),
+                title: Text(key),
+                subtitle: Text(_exerciseFrequencyOptions[key]!['description']),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -436,6 +491,61 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                       return null;
                                     },
                                   ), // End of TextFormField for Target Weight
+                                  const SizedBox(height: 16.0),
+                                  const Text('Gender', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  SizedBox(
+                                    width: 300,
+                                    child: Column(
+                                      children: [
+                                        RadioListTile<String>(
+                                          title: const Text('Male'),
+                                          value: 'Male',
+                                          groupValue: _selectedGender,
+                                          secondary: const Icon(Icons.man),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedGender = value;
+                                            });
+                                          },
+                                        ),
+                                        RadioListTile<String>(
+                                          title: const Text('Female'),
+                                          value: 'Female',
+                                          groupValue: _selectedGender,
+                                          secondary: const Icon(Icons.woman),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedGender = value;
+                                            });
+                                          },
+                                        ),
+                                        RadioListTile<String>(
+                                          title: const Text('Not Stating'),
+                                          value: 'Not Stating',
+                                          groupValue: _selectedGender,
+                                          secondary: const Icon(Icons.not_interested),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedGender = value;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16.0),
+                                  const Text('Exercise Frequency', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ListTile(
+                                    title: Text(_selectedExerciseFrequency ?? 'Select your activity level'),
+                                    subtitle: _selectedExerciseFrequency != null
+                                        ? Text(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['description'])
+                                        : null,
+                                    leading: _selectedExerciseFrequency != null
+                                        ? Icon(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['icon'])
+                                        : null,
+                                    trailing: const Icon(Icons.arrow_drop_down),
+                                    onTap: () => _showExerciseFrequencyDialog(),
+                                  ),
                                   const SizedBox(height: 24.0),
                                   ElevatedButton.icon(
                                     onPressed: _saveSettings,

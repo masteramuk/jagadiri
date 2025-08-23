@@ -31,7 +31,7 @@ class DatabaseService {
       final dbPath = join(databasesPath, 'jagadiri.db');
       return await openDatabase(
         dbPath,
-        version: 5, // Increased to 5: v1=sugar, v2=bp, v3=settings, v4=user_profile (basic), v5=user_profile (enhanced)
+        version: 6, // Increased to 6: v1=sugar, v2=bp, v3=settings, v4=user_profile (basic), v5=user_profile (enhanced), v6=user_profile(gender, exercise)
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -81,6 +81,8 @@ class DatabaseService {
         weight REAL NOT NULL,
         targetWeight REAL NOT NULL,
         measurementUnit TEXT NOT NULL,
+        gender TEXT,
+        exerciseFrequency TEXT,
         suitableSugarMin REAL,
         suitableSugarMax REAL,
         suitableSystolicMin INTEGER,
@@ -160,6 +162,15 @@ class DatabaseService {
         'dailyCalorieTarget': 'REAL',
       });
       debugPrint('Enhanced columns added to user_profile.');
+    }
+
+    if (oldVersion < 6) {
+      // v6: Add gender and exerciseFrequency to user_profile
+      await _addColumnsIfNotExist(db, 'user_profile', {
+        'gender': 'TEXT',
+        'exerciseFrequency': 'TEXT',
+      });
+      debugPrint('Added gender and exerciseFrequency to user_profile.');
     }
   }
 
