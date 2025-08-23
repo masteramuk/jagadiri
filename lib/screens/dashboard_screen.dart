@@ -176,11 +176,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             '\$label:',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end, // Align text to the end
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
           ),
         ],
       ),

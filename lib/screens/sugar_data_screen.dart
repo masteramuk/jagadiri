@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/services/database_service.dart'; // Import DatabaseService
+import 'package:jagadiri/utils/unit_converter.dart'; // Import UnitConverter
 
 class SugarDataScreen extends StatefulWidget {
   const SugarDataScreen({super.key});
@@ -14,6 +15,7 @@ class SugarDataScreen extends StatefulWidget {
 class _SugarDataScreenState extends State<SugarDataScreen> {
   List<SugarRecord> _sugarRecords = [];
   bool _isLoading = true;
+  String _currentUnit = 'Metric'; // Default unit
 
   // Form controllers
   final TextEditingController _dateController = TextEditingController();
@@ -42,6 +44,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     try {
       _sugarRecords = await databaseService.getSugarRecords();
+      _currentUnit = await databaseService.getSetting('measurementUnit') ?? 'Metric'; // Fetch unit
       setState(() {
         _isLoading = false;
       });
@@ -170,7 +173,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                             Text(
-                              'Value: ${record.value.toStringAsFixed(1)}',
+                              'Value: ${record.value.toStringAsFixed(1)} ${_currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL'}',
                               style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -210,7 +213,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
-  Widget _buildSugarEntryRow(String label, double value) {
+  Widget _buildSugarEntryRow(String label, double value, String unit) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -221,7 +224,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           Text(
-            value.toStringAsFixed(1),
+            '${value.toStringAsFixed(1)} $unit',
             style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

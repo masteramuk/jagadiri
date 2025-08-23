@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:jagadiri/models/bp_record.dart';
 import 'package:jagadiri/services/database_service.dart'; // Import DatabaseService
+import 'package:jagadiri/utils/unit_converter.dart'; // Import UnitConverter
 
 class BPDataScreen extends StatefulWidget {
   const BPDataScreen({super.key});
@@ -14,6 +15,7 @@ class BPDataScreen extends StatefulWidget {
 class _BPDataScreenState extends State<BPDataScreen> {
   List<BPRecord> _bpRecords = [];
   bool _isLoading = true;
+  String _currentUnit = 'Metric'; // Default unit
 
   // Form controllers
   final TextEditingController _dateController = TextEditingController();
@@ -46,6 +48,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
 
     try {
       _bpRecords = await databaseService.getBPRecords();
+      _currentUnit = await databaseService.getSetting('measurementUnit') ?? 'Metric'; // Fetch unit
       setState(() {
         _isLoading = false;
       });
@@ -157,13 +160,13 @@ class _BPDataScreenState extends State<BPDataScreen> {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             Text(
-                              'Time of Day: \${record.timeName.name.toUpperCase()}',
+                              'Time of Day: ${record.timeName.name.toUpperCase()}',
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                             const SizedBox(height: 8),
-                            _buildBPEntryRow('Systolic', record.systolic.toString()),
-                            _buildBPEntryRow('Diastolic', record.diastolic.toString()),
-                            _buildBPEntryRow('Pulse Rate', record.pulseRate.toString()),
+                            _buildBPEntryRow('Systolic', record.systolic.toString(), 'mmHg'),
+                            _buildBPEntryRow('Diastolic', record.diastolic.toString(), 'mmHg'),
+                            _buildBPEntryRow('Pulse Rate', record.pulseRate.toString(), 'bpm'),
                             const SizedBox(height: 8),
                             Align(
                               alignment: Alignment.bottomRight,
@@ -199,18 +202,18 @@ class _BPDataScreenState extends State<BPDataScreen> {
     );
   }
 
-  Widget _buildBPEntryRow(String label, String value) {
+  Widget _buildBPEntryRow(String label, String value, String unit) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '\$label:',
+            '$label:',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           Text(
-            value,
+            '$value $unit',
             style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

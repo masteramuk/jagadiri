@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     SugarDataScreen(),
     BPDataScreen(),
     ReportsScreen(),
-    ProfileSettingsScreen(),
+    ProfileSettingsScreen(), // Add back ProfileSettingsScreen
   ];
 
   void _onItemTapped(int index) {
@@ -61,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
+        onTap: _onItemTapped, // Revert to original onTap
         type: BottomNavigationBarType.fixed, // Ensures all labels are visible
       ),
     );
