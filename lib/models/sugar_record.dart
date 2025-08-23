@@ -6,65 +6,121 @@ enum SugarStatus {
   bad,
 }
 
+enum MealTimeCategory {
+  before,
+  after,
+}
+
+enum MealType {
+  breakfast,
+  midMorningSnack,
+  lunch,
+  midAfternoonSnack,
+  dinner,
+  supper,
+  sahoor,
+}
+
 class SugarRecord {
+  final int? id; // Nullable for new records before insertion
   final DateTime date;
   final TimeOfDay time;
-  final double beforeBreakfast;
-  final double afterBreakfast;
-  final double beforeLunch;
-  final double afterLunch;
-  final double beforeDinner;
-  final double afterDinner;
-  final double beforeSleep;
+  final MealTimeCategory mealTimeCategory;
+  final MealType mealType;
+  final double value;
   final SugarStatus status;
 
   SugarRecord({
+    this.id,
     required this.date,
     required this.time,
-    required this.beforeBreakfast,
-    required this.afterBreakfast,
-    required this.beforeLunch,
-    required this.afterLunch,
-    required this.beforeDinner,
-    required this.afterDinner,
-    required this.beforeSleep,
+    required this.mealTimeCategory,
+    required this.mealType,
+    required this.value,
     required this.status,
   });
 
-  // Factory constructor to create a SugarRecord from a map (e.g., from Google Sheets)
-  factory SugarRecord.fromMap(Map<String, dynamic> map) {
-    // Implement logic to parse date, time, and sugar values from map
-    // and determine status based on predefined ranges.
-    // This will be more detailed once Google Sheets integration is clearer.
+  // Factory constructor to create a SugarRecord from a JSON map (for local storage)
+  factory SugarRecord.fromJson(Map<String, dynamic> json) {
     return SugarRecord(
-      date: DateTime.parse(map['Date']),
-      time: TimeOfDay(
-          hour: int.parse(map['Time'].split(':')[0]),
-          minute: int.parse(map['Time'].split(':')[1])),
-      beforeBreakfast: double.parse(map['Before Breakfast']),
-      afterBreakfast: double.parse(map['After Breakfast']),
-      beforeLunch: double.parse(map['Before Lunch']),
-      afterLunch: double.parse(map['After Lunch']),
-      beforeDinner: double.parse(map['Before Dinner']),
-      afterDinner: double.parse(map['After Dinner']),
-      beforeSleep: double.parse(map['Before Sleep']),
-      status: SugarStatus.good, // Placeholder, actual logic will be here
+      date: DateTime.parse(json['date']),
+      time: TimeOfDay(hour: json['timeHour'], minute: json['timeMinute']),
+      mealTimeCategory: MealTimeCategory.values.firstWhere(
+          (e) => e.toString().split('.').last == json['mealTimeCategory']),
+      mealType: MealType.values.firstWhere(
+          (e) => e.toString().split('.').last == json['mealType']),
+      value: json['value'],
+      status: SugarStatus.values.firstWhere(
+          (e) => e.toString().split('.').last == json['status']),
     );
   }
 
-  // Method to convert SugarRecord to a map (e.g., for Google Sheets)
-  Map<String, dynamic> toMap() {
+  // Method to convert SugarRecord to a JSON map (for local storage)
+  Map<String, dynamic> toJson() {
     return {
-      'Date': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-      'Time': '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-      'Before Breakfast': beforeBreakfast,
-      'After Breakfast': afterBreakfast,
-      'Before Lunch': beforeLunch,
-      'After Lunch': afterLunch,
-      'Before Dinner': beforeDinner,
-      'After Dinner': afterDinner,
-      'Before Sleep': beforeSleep,
-      'Status': status.toString().split('.').last,
+      'date': date.toIso8601String(),
+      'timeHour': time.hour,
+      'timeMinute': time.minute,
+      'mealTimeCategory': mealTimeCategory.toString().split('.').last,
+      'mealType': mealType.toString().split('.').last,
+      'value': value,
+      'status': status.toString().split('.').last,
     };
+  }
+
+  // Factory constructor to create a SugarRecord from a database map
+  factory SugarRecord.fromDbMap(Map<String, dynamic> map) {
+    return SugarRecord(
+      id: map['id'],
+      date: DateTime.fromMillisecondsSinceEpoch(map['date']),
+      time: TimeOfDay(hour: int.parse(map['time'].split(':')[0]), minute: int.parse(map['time'].split(':')[1])),
+      mealTimeCategory: MealTimeCategory.values.firstWhere(
+          (e) => e.toString().split('.').last == map['mealTimeCategory']),
+      mealType: MealType.values.firstWhere(
+          (e) => e.toString().split('.').last == map['mealType']),
+      value: map['value'],
+      status: SugarStatus.values.firstWhere(
+          (e) => e.toString().split('.').last == map['status']),
+    );
+  }
+
+  // Method to convert SugarRecord to a database map
+  Map<String, dynamic> toDbMap() {
+    return {
+      'id': id,
+      'date': date.millisecondsSinceEpoch,
+      'time': '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+      'mealTimeCategory': mealTimeCategory.toString().split('.').last,
+      'mealType': mealType.toString().split('.').last,
+      'value': value,
+      'status': status.toString().split('.').last,
+    };
+  }
+
+  static SugarStatus calculateSugarStatus(
+    MealTimeCategory mealTimeCategory,
+    double value,
+  ) {
+    // Clinical ranges (illustrative, consult medical guidelines for accuracy)
+    // Assuming mg/dL for now. Conversion will be handled at display.
+
+    if (mealTimeCategory == MealTimeCategory.before) {
+      // Before meal (fasting or pre-meal)
+      if (value < 70 || value > 130) {
+        return SugarStatus.bad;
+      } else if (value >= 70 && value <= 100) {
+        return SugarStatus.good;
+      } else {
+        return SugarStatus.normal; // 101-130
+      }
+    } else { // After meal
+      if (value > 180) {
+        return SugarStatus.bad;
+      } else if (value <= 140) {
+        return SugarStatus.good;
+      } else {
+        return SugarStatus.normal; // 141-180
+      }
+    }
   }
 }
