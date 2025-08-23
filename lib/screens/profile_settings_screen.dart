@@ -204,6 +204,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   } // End of _getSuitablePulseRange method
 
   double _calculateDailyCalorieTarget(UserProfile profile, int age) {
+    if (profile.gender == null || profile.exerciseFrequency == null) {
+      return 0; // Or some default value, or handle the error appropriately
+    }
+
     double weightKg = profile.measurementUnit == 'Metric'
         ? profile.weight
         : UnitConverter.convertWeight(profile.weight, 'US', 'Metric');
@@ -211,15 +215,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ? profile.height
         : UnitConverter.convertHeight(profile.height, 'US', 'Metric');
 
-    double bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
-    double tdee = bmr * 1.55; // Moderate activity
+    // Mifflin-St Jeor Equation
+    const maleOffset = 5;
+    const femaleOffset = -161;
+    final offset = profile.gender!.toLowerCase() == 'male' ? maleOffset : femaleOffset;
 
+    final bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + offset;
+
+    // Activity multipliers
+    final multipliers = {
+      'Sedentary': 1.2,
+      'Light': 1.375,
+      'Moderate': 1.55,
+      'Active': 1.725,
+      'Very Active': 1.9,
+    };
+
+    final tdee = bmr * multipliers[profile.exerciseFrequency]!;
+
+    // Adjustment for target weight
     if (profile.weight > profile.targetWeight) {
-      tdee -= 500;
+      return tdee - 500; // ~0.5 kg loss/week
     } else if (profile.weight < profile.targetWeight) {
-      tdee += 300;
+      return tdee + 300; // ~0.3 kg gain/week
     }
-
     return tdee;
   } // End of _calculateDailyCalorieTarget method
 
@@ -597,6 +616,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                               ),
                               Text(
                                 'Daily Calorie Target: ${_userProfile!.dailyCalorieTarget?.toStringAsFixed(0) ?? 'N/A'} kcal',
+                              ),
+                              const SizedBox(height: 10.0),
+                              const Text(
+                                'About Your Daily Calorie Target:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const Text(
+                                'Your daily calorie target is an estimate of the total number of calories you burn each day (Total Daily Energy Expenditure - TDEE), adjusted based on your weight goals. It is calculated using the Mifflin-St Jeor equation, taking into account your age, gender, height, weight, and activity level.',
                               ),
                               const SizedBox(height: 10.0),
                               Text(
