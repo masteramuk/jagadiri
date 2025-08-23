@@ -273,11 +273,16 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Text('Meal Time Category:'),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: MealTimeCategory.values.map((category) {
-                        return Expanded(
+                        return SizedBox(
+                          width: 200,
                           child: RadioListTile<MealTimeCategory>(
-                            title: Text(category.name.toUpperCase()),
+                            title: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(category.name.toUpperCase()),
+                            ),
                             value: category,
                             groupValue: selectedMealTimeCategory,
                             onChanged: (MealTimeCategory? value) {

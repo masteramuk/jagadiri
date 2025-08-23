@@ -7,6 +7,8 @@ class UserProfile {
   double weight;
   double targetWeight;
   String measurementUnit; // 'Metric' or 'US'
+  String? gender;
+  String? exerciseFrequency;
 
   // Calculated suitable metrics and targets
   double? suitableSugarMin;
@@ -27,6 +29,8 @@ class UserProfile {
     required this.weight,
     required this.targetWeight,
     required this.measurementUnit,
+    this.gender,
+    this.exerciseFrequency,
     this.suitableSugarMin,
     this.suitableSugarMax,
     this.suitableSystolicMin,
@@ -59,6 +63,8 @@ class UserProfile {
       'weight': weight,
       'targetWeight': targetWeight,
       'measurementUnit': measurementUnit,
+      'gender': gender,
+      'exerciseFrequency': exerciseFrequency,
       'suitableSugarMin': suitableSugarMin,
       'suitableSugarMax': suitableSugarMax,
       'suitableSystolicMin': suitableSystolicMin,
@@ -81,6 +87,8 @@ class UserProfile {
       weight: map['weight'],
       targetWeight: map['targetWeight'],
       measurementUnit: map['measurementUnit'],
+      gender: map['gender'],
+      exerciseFrequency: map['exerciseFrequency'],
       suitableSugarMin: map['suitableSugarMin'],
       suitableSugarMax: map['suitableSugarMax'],
       suitableSystolicMin: map['suitableSystolicMin'],
