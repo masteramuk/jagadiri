@@ -12,7 +12,7 @@ class ProfileSettingsScreen extends StatefulWidget {
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
-}
+} // End of ProfileSettingsScreen class
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -35,7 +35,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _weightController = TextEditingController();
     _targetWeightController = TextEditingController();
     _loadSettings();
-  }
+  } // End of initState method
 
   @override
   void dispose() {
@@ -45,23 +45,27 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _weightController.dispose();
     _targetWeightController.dispose();
     super.dispose();
-  }
+  } // End of dispose method
 
   Future<void> _loadSettings() async {
-    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+    final databaseService =
+    Provider.of<DatabaseService>(context, listen: false);
     _userProfile = await databaseService.getUserProfile();
-    _selectedThemeName = await databaseService.getSetting('themeName') ?? 'Light';
-    _selectedMeasurementUnit = await databaseService.getSetting('measurementUnit') ?? 'Metric';
+    _selectedThemeName =
+        await databaseService.getSetting('themeName') ?? 'Light';
+    _selectedMeasurementUnit =
+        await databaseService.getSetting('measurementUnit') ?? 'Metric';
 
     if (_userProfile != null) {
       _nameController.text = _userProfile!.name;
-      _dobController.text = DateFormat('yyyy-MM-dd').format(_userProfile!.dob);
+      _dobController.text = DateFormat('dd-MM-yyyy').format(_userProfile!.dob);
       _heightController.text = _userProfile!.height.toStringAsFixed(1);
       _weightController.text = _userProfile!.weight.toStringAsFixed(1);
-      _targetWeightController.text = _userProfile!.targetWeight.toStringAsFixed(1);
+      _targetWeightController.text =
+          _userProfile!.targetWeight.toStringAsFixed(1);
     }
     setState(() {});
-  }
+  }// End of _loadSettings method
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -72,62 +76,163 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
     if (picked != null) {
       setState(() {
-        _dobController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _dobController.text = DateFormat('dd-MM-yyyy').format(picked);
       });
     }
-  }
+  }// End of _selectDate method
 
   String _getBMICategory(double bmi) {
-    if (bmi < 18.5) {
-      return 'Underweight';
-    } else if (bmi >= 18.5 && bmi < 24.9) {
-      return 'Normal weight';
-    } else if (bmi >= 25 && bmi < 29.9) {
-      return 'Overweight';
-    } else {
-      return 'Obesity';
-    }
-  }
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal weight';
+    if (bmi < 30) return 'Overweight';
+    if (bmi < 35) return 'Obesity I';
+    if (bmi < 40) return 'Obesity II';
+    return 'Obesity III (Morbid)'; // bmi ≥ 40
+  } // End of _getBMICategory method
 
   String _getAdvice(UserProfile profile) {
-    String advice = 'General advice: Maintain a balanced diet and regular exercise.';
+    String advice =
+        'General advice: Maintain a balanced diet and regular exercise.';
     if (profile.bmi < 18.5) {
-      advice = 'You are underweight. Consider consulting a doctor or nutritionist to gain weight healthily.';
+      advice =
+      'You are underweight. Consider consulting a doctor or nutritionist to gain weight healthily.';
     } else if (profile.bmi >= 25) {
-      advice = 'You are overweight or obese. Focus on a calorie-controlled diet and increased physical activity.';
+      advice =
+      'You are overweight or obese. Focus on a calorie-controlled diet and increased physical activity.';
     }
 
     if (profile.weight > profile.targetWeight) {
-      advice += ' You are currently above your target weight. Focus on gradual weight loss.';
+      advice +=
+      ' You are currently above your target weight. Focus on gradual weight loss.';
     } else if (profile.weight < profile.targetWeight) {
-      advice += ' You are currently below your target weight. Ensure healthy weight gain if that is your goal.';
+      advice +=
+      ' You are currently below your target weight. Ensure healthy weight gain if that is your goal.';
     } else {
-      advice += ' You are at your target weight. Great job! Maintain your healthy habits.';
+      advice +=
+      ' You are at your target weight. Great job! Maintain your healthy habits.';
     }
     return advice;
-  }
+  } // End of _getAdvice method
+
+  int _getAge(DateTime dob) {
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {age--;};
+    return age;
+  } // End of _getAge method
+
+  /// Always returns the correct unit based on the user’s choice.
+  Map<String, dynamic> _getSuitableSugarRange(
+      int age, String measurementUnit) {
+    // Base values in mmol/L
+    late double min, max;
+    if (age < 18) {
+      min = 4.0;
+      max = 7.8;
+    } else if (age <= 60) {
+      min = 4.0;
+      max = 7.8;
+    } else {
+      min = 4.4;
+      max = 8.0;
+    }
+
+    // Convert if the user picked US units
+    if (measurementUnit == 'US') {
+      min *= 18.0182;
+      max *= 18.0182;
+    }
+
+    return {'min': min, 'max': max};
+  } // End of _getSuitableSugarRange method
+
+  Map<String, dynamic> _getSuitableBPRange(int age) {
+    if (age < 18) {
+      return {
+        'systolicMin': 90,
+        'systolicMax': 120,
+        'diastolicMin': 60,
+        'diastolicMax': 80
+      };
+    } else if (age <= 60) {
+      return {
+        'systolicMin': 90,
+        'systolicMax': 120,
+        'diastolicMin': 60,
+        'diastolicMax': 80
+      };
+    } else {
+      return {
+        'systolicMin': 110,
+        'systolicMax': 140,
+        'diastolicMin': 70,
+        'diastolicMax': 90
+      };
+    }
+  } // End of _getSuitableBPRange method
+
+  Map<String, dynamic> _getSuitablePulseRange(int age) {
+    return {'min': 60, 'max': 100}; // bpm
+  } // End of _getSuitablePulseRange method
+
+  double _calculateDailyCalorieTarget(UserProfile profile, int age) {
+    double weightKg = profile.measurementUnit == 'Metric'
+        ? profile.weight
+        : UnitConverter.convertWeight(profile.weight, 'US', 'Metric');
+    double heightCm = profile.measurementUnit == 'Metric'
+        ? profile.height
+        : UnitConverter.convertHeight(profile.height, 'US', 'Metric');
+
+    double bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
+    double tdee = bmr * 1.55; // Moderate activity
+
+    if (profile.weight > profile.targetWeight) {
+      tdee -= 500;
+    } else if (profile.weight < profile.targetWeight) {
+      tdee += 300;
+    }
+
+    return tdee;
+  } // End of _calculateDailyCalorieTarget method
 
   Future<void> _saveSettings() async {
-    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+    final databaseService =
+    Provider.of<DatabaseService>(context, listen: false);
 
-    // Save Theme
     await databaseService.insertSetting('themeName', _selectedThemeName);
-    Provider.of<ThemeProvider>(context, listen: false).setTheme(_selectedThemeName);
+    Provider.of<ThemeProvider>(context, listen: false)
+        .setTheme(_selectedThemeName);
 
-    // Save Measurement Unit
-    await databaseService.insertSetting('measurementUnit', _selectedMeasurementUnit);
+    await databaseService.insertSetting(
+        'measurementUnit', _selectedMeasurementUnit);
 
-    // Save User Profile
     if (_formKey.currentState!.validate()) {
       final newProfile = UserProfile(
-        id: _userProfile?.id, // Use existing ID if updating
+        id: _userProfile?.id,
         name: _nameController.text,
-        dob: DateTime.parse(_dobController.text),
+        dob: DateFormat('dd-MM-yyyy').parseStrict(_dobController.text),
         height: double.parse(_heightController.text),
         weight: double.parse(_weightController.text),
         targetWeight: double.parse(_targetWeightController.text),
-        measurementUnit: _selectedMeasurementUnit, // Use the selected unit
+        measurementUnit: _selectedMeasurementUnit,
       );
+
+      final age = _getAge(newProfile.dob);
+      final sugarRange = _getSuitableSugarRange(age, _selectedMeasurementUnit);
+      final bpRange = _getSuitableBPRange(age);
+      final pulseRange = _getSuitablePulseRange(age);
+      final dailyCalories = _calculateDailyCalorieTarget(newProfile, age);
+
+      newProfile.suitableSugarMin = sugarRange['min'];
+      newProfile.suitableSugarMax = sugarRange['max'];
+      newProfile.suitableSystolicMin = bpRange['systolicMin'];
+      newProfile.suitableSystolicMax = bpRange['systolicMax'];
+      newProfile.suitableDiastolicMin = bpRange['diastolicMin'];
+      newProfile.suitableDiastolicMax = bpRange['diastolicMax'];
+      newProfile.suitablePulseMin = pulseRange['min'];
+      newProfile.suitablePulseMax = pulseRange['max'];
+      newProfile.dailyCalorieTarget = dailyCalories;
 
       try {
         if (_userProfile == null) {
@@ -136,183 +241,271 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           await databaseService.updateUserProfile(newProfile);
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings and Profile saved successfully!')),
+          const SnackBar(
+              content: Text('Settings and Profile saved successfully!')),
         );
-        _loadSettings(); // Reload to update BMI and advice
+        _loadSettings();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save profile: \${e.toString()}')),
+          SnackBar(content: Text('Failed to save profile: ${e.toString()}')),
         );
       }
     }
-  }
+  }// End of _saveSettings method
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile & Settings'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // App Preferences Section
-            Text(
-              'App Preferences',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              title: const Text('Theme'),
-              trailing: DropdownButton<String>(
-                value: _selectedThemeName,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedThemeName = newValue!;
-                  });
-                },
-                items: AppThemes.themes.keys.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-              ),
-            ),
-            ListTile(
-              title: const Text('Measurement Unit'),
-              trailing: DropdownButton<String>(
-                value: _selectedMeasurementUnit,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedMeasurementUnit = newValue!;
-                  });
-                },
-                items: <String>['Metric', 'US']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-              ),
-            ),
-            const Divider(),
-            // User Profile Section
-            Text(
-              'User Profile',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 10),
-            Form(
-              key: _formKey,
-              child: Column(
+        appBar: AppBar(title: const Text('Profile & Settings')),
+        body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _dobController,
-                    decoration: const InputDecoration(
-                      labelText: 'Date of Birth (YYYY-MM-DD)',
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                    readOnly: true,
-                    onTap: () => _selectDate(context),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your date of birth';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _heightController,
-                    decoration: InputDecoration(labelText: 'Height (${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'})'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your height';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _weightController,
-                    decoration: InputDecoration(labelText: 'Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your weight';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _targetWeightController,
-                    decoration: InputDecoration(labelText: 'Target Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your target weight';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  if (_userProfile != null) ...[
-                    Text(
-                      'BMI: ${_userProfile!.bmi.toStringAsFixed(2)} (${_getBMICategory(_userProfile!.bmi)})',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Current Weight: ${_userProfile!.weight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    Text(
-                      'Target Weight: ${_userProfile!.targetWeight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Advice: ${_getAdvice(_userProfile!)}',
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontStyle: FontStyle.italic),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _saveSettings,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save Settings'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                    // App Preferences
+                    Card(
+                      elevation: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.settings_applications, size: 28),
+                                  const SizedBox(width: 10),
+                                    Text(
+                                      'App Preferences',
+                                      style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    ),// End of Text
+                                  ], //end of children of Row
+                              ), // End of Row
+                              const Divider(),
+                              ListTile(
+                                title: const Text('Theme'),
+                                trailing: DropdownButton<String>(
+                                  value: _selectedThemeName,
+                                  onChanged: (String? newValue) {
+                                    setState(() => _selectedThemeName = newValue!);
+                                  },
+                                  items: AppThemes.themes.keys.map((String value) {
+                                    return DropdownMenuItem(
+                                        value: value, child: Text(value));
+                                  }).toList(),
+                                ),// End of DropdownButton
+                              ),// End of ListTile
+                              ListTile(
+                                title: const Text('Measurement Unit'),
+                                trailing: DropdownButton<String>(
+                                  value: _selectedMeasurementUnit,
+                                  onChanged: (String? newValue) {
+                                    setState(() => _selectedMeasurementUnit = newValue!);
+                                  },
+                                  items: ['Metric', 'US'].map((String value) {
+                                    return DropdownMenuItem(
+                                        value: value, child: Text(value));
+                                  }).toList(),
+                                ),// End of DropdownButton
+                              ), // End of ListTile
+                            ],// End of children of Column
+                        ), //end of Column
+                      ), // End of Padding
+                    ),// end of Card() App Preferences
+                  // User Profile
+                  Card(
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 10.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.person, size: 28),
+                                const SizedBox(width: 10),
+                                  Text(
+                                    'User Profile',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),// End of Text
+                              ], // End of children of Row
+                            ), // End of Row
+                            const Divider(),
+                            //start FORM
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _nameController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Name',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your name';
+                                      }
+                                      return null;
+                                    },
+                                  ), // End of TextFormField for Name
+                                  const SizedBox(height: 16.0),
+                                  TextFormField(
+                                    controller: _dobController,
+                                    readOnly: true,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Date of Birth',
+                                      border: OutlineInputBorder(),
+                                      suffixIcon: Icon(Icons.calendar_today),
+                                    ),
+                                    onTap: () => _selectDate(context),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please select your date of birth';
+                                      }
+                                      return null;
+                                    },
+                                  ), // End of TextFormField for DOB
+                                  const SizedBox(height: 16.0),
+                                  TextFormField(
+                                    controller: _heightController,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'Height (${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'})',
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your height';
+                                      }
+                                      final height = double.tryParse(value);
+                                      if (height == null || height <= 0) {
+                                        return 'Please enter a valid height';
+                                      }
+                                      return null;
+                                    },
+                                  ), // End of TextFormField for Height
+                                  const SizedBox(height: 16.0),
+                                  TextFormField(
+                                    controller: _weightController,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})',
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your weight';
+                                      }
+                                      final weight = double.tryParse(value);
+                                      if (weight == null || weight <= 0) {
+                                        return 'Please enter a valid weight';
+                                      }
+                                      return null;
+                                    },
+                                  ), // End of TextFormField for Weight
+                                  const SizedBox(height: 16.0),
+                                  TextFormField(
+                                    controller: _targetWeightController,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'Target Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})',
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your target weight';
+                                      }
+                                      final targetWeight = double.tryParse(value);
+                                      if (targetWeight == null || targetWeight <= 0) {
+                                        return 'Please enter a valid target weight';
+                                      }
+                                      return null;
+                                    },
+                                  ), // End of TextFormField for Target Weight
+                                  const SizedBox(height: 24.0),
+                                  ElevatedButton.icon(
+                                    onPressed: _saveSettings,
+                                    icon: const Icon(Icons.save),
+                                    label: const Text('Save Profile & Settings'),
+                                  ), // End of ElevatedButton
+                                ], // End of children of Column in FORM
+                              ), // End of Column in FORM
+                            ),
+                            //end FORM
+                            const SizedBox(height: 20.0),
+                            if (_userProfile != null) ...[
+                              const Divider(),
+                              Text(
+                                'Profile Summary',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 10.0),
+                              Text('Name: ${_userProfile!.name}'),
+                              Text(
+                                'Age: ${_getAge(_userProfile!.dob)} years',
+                              ),
+                              Text(
+                                'Height: ${_userProfile!.height.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'}',
+                              ),
+                              Text(
+                                'Weight: ${_userProfile!.weight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
+                              ),
+                              Text(
+                                'Target Weight: ${_userProfile!.targetWeight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
+                              ),
+                              Text(
+                                'BMI: ${_userProfile!.bmi.toStringAsFixed(1)} (${_getBMICategory(_userProfile!.bmi)})',
+                              ),
+                              Text(
+                                'Suitable Blood Sugar Range: '
+                                    '${_userProfile!.suitableSugarMin?.toStringAsFixed(1) ?? 'N/A'} - '
+                                    '${_userProfile!.suitableSugarMax?.toStringAsFixed(1) ?? 'N/A'} '
+                                    '${_selectedMeasurementUnit == 'Metric' ? 'mmol/L' : 'mg/dL'}',
+                              ),
+                              Text(
+                                'Suitable Blood Pressure Range: ${_userProfile!.suitableSystolicMin}-${_userProfile!.suitableSystolicMax}/${_userProfile!.suitableDiastolicMin}-${_userProfile!.suitableDiastolicMax} mmHg',
+                              ),
+                              Text(
+                                'Suitable Pulse Range: ${_userProfile!.suitablePulseMin}-${_userProfile!.suitablePulseMax} bpm',
+                              ),
+                              Text(
+                                'Daily Calorie Target: ${_userProfile!.dailyCalorieTarget?.toStringAsFixed(0) ?? 'N/A'} kcal',
+                              ),
+                              const SizedBox(height: 10.0),
+                              Text(
+                                'Health Advice:',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(_getAdvice(_userProfile!)),
+                            ], // End of if _userProfile != null
+                          ], // End of children of Column
+                      ), // End of Padding
+                    ), // End of Padding
+                  ) //end of Card() User Profile
+                ], // End of children of Column
+            ) // End of Column
+        )// End of SingleChildScrollView
+    ); // End of Scaffold
+  } // End of build method
+
+} // End of _ProfileSettingsScreenState class

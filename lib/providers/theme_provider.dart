@@ -1,20 +1,27 @@
+// providers/theme_provider.dart
+
 import 'package:flutter/material.dart';
 import 'package:jagadiri/utils/app_themes.dart';
 
 class ThemeProvider with ChangeNotifier {
-  ThemeData _currentTheme;
-  String _currentThemeName;
+  late String _themeName;
+  late ThemeData _currentTheme;
 
-  ThemeProvider(String initialThemeName)
-      : _currentThemeName = initialThemeName,
-        _currentTheme = AppThemes.themes[initialThemeName] ?? AppThemes.lightTheme;
+  ThemeProvider(String themeName) {
+    _themeName = themeName;
+    _currentTheme = AppThemes.themes[themeName] ??
+        AppThemes.themes['Light'] ??
+        ThemeData.light(); // Ultimate fallback
+  }
 
   ThemeData get currentTheme => _currentTheme;
-  String get currentThemeName => _currentThemeName;
+  String get themeName => _themeName;
 
-  void setTheme(String themeName) {
-    _currentTheme = AppThemes.themes[themeName] ?? AppThemes.lightTheme;
-    _currentThemeName = themeName;
-    notifyListeners();
+  void setTheme(String name) {
+    if (AppThemes.themes.containsKey(name)) {
+      _themeName = name;
+      _currentTheme = AppThemes.themes[name]!;
+      notifyListeners();
+    }
   }
 }
