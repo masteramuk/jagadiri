@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 class UserProfile {
   int? id;
@@ -9,6 +8,17 @@ class UserProfile {
   double targetWeight;
   String measurementUnit; // 'Metric' or 'US'
 
+  // Calculated suitable metrics and targets
+  double? suitableSugarMin;
+  double? suitableSugarMax;
+  int? suitableSystolicMin;
+  int? suitableSystolicMax;
+  int? suitableDiastolicMin;
+  int? suitableDiastolicMax;
+  int? suitablePulseMin;
+  int? suitablePulseMax;
+  double? dailyCalorieTarget;
+
   UserProfile({
     this.id,
     required this.name,
@@ -17,6 +27,15 @@ class UserProfile {
     required this.weight,
     required this.targetWeight,
     required this.measurementUnit,
+    this.suitableSugarMin,
+    this.suitableSugarMax,
+    this.suitableSystolicMin,
+    this.suitableSystolicMax,
+    this.suitableDiastolicMin,
+    this.suitableDiastolicMax,
+    this.suitablePulseMin,
+    this.suitablePulseMax,
+    this.dailyCalorieTarget,
   });
 
   // Calculate BMI
@@ -40,6 +59,15 @@ class UserProfile {
       'weight': weight,
       'targetWeight': targetWeight,
       'measurementUnit': measurementUnit,
+      'suitableSugarMin': suitableSugarMin,
+      'suitableSugarMax': suitableSugarMax,
+      'suitableSystolicMin': suitableSystolicMin,
+      'suitableSystolicMax': suitableSystolicMax,
+      'suitableDiastolicMin': suitableDiastolicMin,
+      'suitableDiastolicMax': suitableDiastolicMax,
+      'suitablePulseMin': suitablePulseMin,
+      'suitablePulseMax': suitablePulseMax,
+      'dailyCalorieTarget': dailyCalorieTarget,
     };
   }
 
@@ -53,6 +81,15 @@ class UserProfile {
       weight: map['weight'],
       targetWeight: map['targetWeight'],
       measurementUnit: map['measurementUnit'],
+      suitableSugarMin: map['suitableSugarMin'],
+      suitableSugarMax: map['suitableSugarMax'],
+      suitableSystolicMin: map['suitableSystolicMin'],
+      suitableSystolicMax: map['suitableSystolicMax'],
+      suitableDiastolicMin: map['suitableDiastolicMin'],
+      suitableDiastolicMax: map['suitableDiastolicMax'],
+      suitablePulseMin: map['suitablePulseMin'],
+      suitablePulseMax: map['suitablePulseMax'],
+      dailyCalorieTarget: map['dailyCalorieTarget'],
     );
   }
 }

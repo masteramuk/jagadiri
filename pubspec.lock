@@ -502,7 +502,7 @@ packages:
     source: hosted
     version: "2.5.6"
   sqflite_common_ffi:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: sqflite_common_ffi
       sha256: "9faa2fedc5385ef238ce772589f7718c24cdddd27419b609bb9c6f703ea27988"
@@ -510,7 +510,7 @@ packages:
     source: hosted
     version: "2.3.6"
   sqflite_common_ffi_web:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: sqflite_common_ffi_web
       sha256: "61ea702e7aba727f28be7ead00b84c19c745cd4a4934d0c41473303df11ac9ea"

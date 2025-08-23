@@ -4,7 +4,6 @@ import 'package:jagadiri/services/database_service.dart';
 import 'package:jagadiri/screens/home_screen.dart';
 // No specific imports needed for individual setting screens
 import 'package:jagadiri/providers/theme_provider.dart';
-import 'package:jagadiri/utils/app_themes.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';

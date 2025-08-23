@@ -1,131 +1,338 @@
 import 'package:flutter/material.dart';
 
 class AppThemes {
-  static final ThemeData lightTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.blue,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
-    ),
+  // Cache to avoid rebuilding themes multiple times
+  static final Map<String, ThemeData> _themeCache = {};
+
+  // Common card theme for all themes
+  static CardThemeData _cardTheme(Color color) => CardThemeData(
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    color: color,
   );
 
-  static final ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    primarySwatch: Colors.blueGrey,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.blueGrey,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Common button theme
+  static ElevatedButtonThemeData _elevatedButtonTheme(Color color) =>
+      ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      );
 
-  // Add more themes here
-  static final ThemeData oceanTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.cyan,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.cyan,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Common text theme based on text color
+  static TextTheme _textTheme(Color primaryColor, {Color? secondaryColor}) {
+    final Color bodyColor = secondaryColor ?? primaryColor;
+    return TextTheme(
+      headlineSmall: TextStyle(color: primaryColor),
+      titleLarge: TextStyle(color: primaryColor),
+      titleMedium: TextStyle(color: primaryColor),
+      bodyLarge: TextStyle(color: bodyColor),
+      bodyMedium: TextStyle(color: bodyColor),
+    );
+  }
 
-  static final ThemeData greenTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.green,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.green,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Common bottom nav theme
+  static BottomNavigationBarThemeData _bottomNavTheme({
+    required Color backgroundColor,
+    required Color selectedItemColor,
+    required Color unselectedItemColor,
+  }) =>
+      BottomNavigationBarThemeData(
+        backgroundColor: backgroundColor,
+        selectedItemColor: selectedItemColor,
+        unselectedItemColor: unselectedItemColor,
+        type: BottomNavigationBarType.fixed,
+      );
 
-  static final ThemeData orangeTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.orange,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.orange,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Common app bar theme
+  static AppBarTheme _appBarTheme({
+    required Color backgroundColor,
+    required Color foregroundColor,
+  }) =>
+      AppBarTheme(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: 4,
+      );
 
-  static final ThemeData grassTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.lightGreen,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.lightGreen,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Base theme builder — removed `brightness` parameter (let colorScheme control it)
+  static ThemeData _buildTheme({
+    required MaterialColor primarySwatch,
+    required ColorScheme colorScheme,
+    required Color scaffoldBackgroundColor,
+    required AppBarTheme appBarTheme,
+    required TextTheme textTheme,
+    required CardThemeData cardTheme,
+    required ElevatedButtonThemeData buttonTheme,
+    required BottomNavigationBarThemeData bottomNavTheme,
+  }) {
+    return ThemeData(
+      primarySwatch: primarySwatch,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: scaffoldBackgroundColor,
+      appBarTheme: appBarTheme,
+      textTheme: textTheme,
+      cardTheme: cardTheme,
+      bottomNavigationBarTheme: bottomNavTheme,
+      elevatedButtonTheme: buttonTheme,
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(foregroundColor: colorScheme.primary),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
+      // Removed: brightness → now fully controlled by colorScheme
+    );
+  }
 
-  static final ThemeData novelTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.purple,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.purple,
-      foregroundColor: Colors.white,
-    ),
-  );
+  // Lazy theme factory
+  static ThemeData _getTheme(String name) {
+    return _themeCache.putIfAbsent(name, () {
+      switch (name) {
+        case 'Light':
+          return _buildTheme(
+            primarySwatch: Colors.blue,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
+                .copyWith(secondary: Colors.blueAccent),
+            scaffoldBackgroundColor: Colors.white,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.blueAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.blue,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.blue.shade200,
+            ),
+          );
 
-  static final ThemeData funkyTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.pink,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.pink,
-      foregroundColor: Colors.white,
-    ),
-  );
+        case 'Dark':
+          return _buildTheme(
+            primarySwatch: Colors.blueGrey,
+            colorScheme: ColorScheme.fromSwatch(
+              primarySwatch: Colors.blueGrey,
+              brightness: Brightness.dark,
+            ).copyWith(secondary: Colors.cyanAccent),
+            scaffoldBackgroundColor: Colors.grey.shade900,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.blueGrey.shade800,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.white, secondaryColor: Colors.white70),
+            cardTheme: _cardTheme(Colors.grey.shade800),
+            buttonTheme: _elevatedButtonTheme(Colors.blueGrey.shade600),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.blueGrey.shade900,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.blueGrey.shade400,
+            ),
+          );
 
-  static final ThemeData highContrastTheme = ThemeData(
-    brightness: Brightness.dark,
-    primarySwatch: Colors.grey,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.black,
-      foregroundColor: Colors.yellow,
-    ),
-    colorScheme: ColorScheme.dark(
-      primary: Colors.yellow,
-      onPrimary: Colors.black,
-      secondary: Colors.cyanAccent,
-      onSecondary: Colors.black,
-      surface: Colors.black,
-      onSurface: Colors.white,
-      background: Colors.black,
-      onBackground: Colors.white,
-      error: Colors.redAccent,
-      onError: Colors.black,
-    ),
-  );
+        case 'Ocean':
+          return _buildTheme(
+            primarySwatch: Colors.cyan,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.cyan)
+                .copyWith(secondary: Colors.tealAccent),
+            scaffoldBackgroundColor: Colors.lightBlue.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.cyan,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.tealAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.cyan.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.cyan.shade200,
+            ),
+          );
 
-  static final ThemeData superPinkyTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.pink,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.pinkAccent,
-      foregroundColor: Colors.white,
-    ),
-    colorScheme: ColorScheme.light(
-      primary: Colors.pinkAccent,
-      onPrimary: Colors.white,
-      secondary: Colors.purpleAccent,
-      onSecondary: Colors.white,
-      surface: Colors.pink,
-      onSurface: Colors.white,
-      background: Colors.pink.shade50,
-      onBackground: Colors.pink.shade900,
-      error: Colors.red,
-      onError: Colors.white,
-    ),
-  );
+        case 'Green':
+          return _buildTheme(
+            primarySwatch: Colors.green,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.green)
+                .copyWith(secondary: Colors.lightGreenAccent),
+            scaffoldBackgroundColor: Colors.green.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.lightGreenAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.green.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.green.shade200,
+            ),
+          );
 
+        case 'Orange':
+          return _buildTheme(
+            primarySwatch: Colors.orange,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.orange)
+                .copyWith(secondary: Colors.deepOrangeAccent),
+            scaffoldBackgroundColor: Colors.orange.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.deepOrangeAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.orange.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.orange.shade200,
+            ),
+          );
+
+        case 'Grass':
+          return _buildTheme(
+            primarySwatch: Colors.lightGreen,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.lightGreen)
+                .copyWith(secondary: Colors.limeAccent),
+            scaffoldBackgroundColor: Colors.lime.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.lightGreen,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.limeAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.lightGreen.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.lightGreen.shade200,
+            ),
+          );
+
+        case 'Novel':
+          return _buildTheme(
+            primarySwatch: Colors.purple,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.purple)
+                .copyWith(secondary: Colors.deepPurpleAccent),
+            scaffoldBackgroundColor: Colors.purple.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.deepPurpleAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.purple.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.purple.shade200,
+            ),
+          );
+
+        case 'Funky':
+          return _buildTheme(
+            primarySwatch: Colors.pink,
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.pink)
+                .copyWith(secondary: Colors.pinkAccent),
+            scaffoldBackgroundColor: Colors.pink.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.pink,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.black87),
+            cardTheme: _cardTheme(Colors.white),
+            buttonTheme: _elevatedButtonTheme(Colors.pinkAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.pink.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.pink.shade200,
+            ),
+          );
+
+        case 'High Contrast':
+          return _buildTheme(
+            primarySwatch: Colors.grey,
+            colorScheme: ColorScheme.dark(
+              primary: Colors.yellow,
+              onPrimary: Colors.black,
+              secondary: Colors.cyanAccent,
+              onSecondary: Colors.black,
+              surface: Colors.black,
+              onSurface: Colors.white,
+              error: Colors.redAccent,
+              onError: Colors.black,
+            ),
+            scaffoldBackgroundColor: Colors.black,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.yellow,
+            ),
+            textTheme: _textTheme(Colors.yellow, secondaryColor: Colors.white),
+            cardTheme: _cardTheme(Colors.grey.shade900),
+            buttonTheme: _elevatedButtonTheme(Colors.yellow),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.black,
+              selectedItemColor: Colors.yellow,
+              unselectedItemColor: Colors.white,
+            ),
+          );
+
+        case 'Super Pinky':
+          return _buildTheme(
+            primarySwatch: Colors.pink,
+            colorScheme: ColorScheme.light(
+              primary: Colors.pinkAccent,
+              onPrimary: Colors.white,
+              secondary: Colors.purpleAccent,
+              onSecondary: Colors.white,
+              surface: Colors.pink,
+              onSurface: Colors.white,
+              error: Colors.red,
+              onError: Colors.white,
+            ),
+            scaffoldBackgroundColor: Colors.pink.shade50,
+            appBarTheme: _appBarTheme(
+              backgroundColor: Colors.pinkAccent,
+              foregroundColor: Colors.white,
+            ),
+            textTheme: _textTheme(Colors.pink.shade900, secondaryColor: Colors.pink.shade800),
+            cardTheme: _cardTheme(Colors.pink.shade100),
+            buttonTheme: _elevatedButtonTheme(Colors.purpleAccent),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.pink.shade800,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.pink.shade200,
+            ),
+          );
+
+        default:
+          return _getTheme('Light'); // fallback
+      }
+    });
+  }
+
+  /// Public getter: returns a map of lazy-loaded themes
   static Map<String, ThemeData> get themes => {
-        'Light': lightTheme,
-        'Dark': darkTheme,
-        'Ocean': oceanTheme,
-        'Green': greenTheme,
-        'Orange': orangeTheme,
-        'Grass': grassTheme,
-        'Novel': novelTheme,
-        'Funky': funkyTheme,
-        'High Contrast': highContrastTheme,
-        'Super Pinky': superPinkyTheme,
-      };
+    for (final name in _themeNames) name: _getTheme(name),
+  };
+
+  // List of all theme names (used in for-loop above)
+  static final List<String> _themeNames = [
+    'Light',
+    'Dark',
+    'Ocean',
+    'Green',
+    'Orange',
+    'Grass',
+    'Novel',
+    'Funky',
+    'High Contrast',
+    'Super Pinky',
+  ];
 }
