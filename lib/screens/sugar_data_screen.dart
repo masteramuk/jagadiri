@@ -14,8 +14,19 @@ class SugarDataScreen extends StatefulWidget {
 
 class _SugarDataScreenState extends State<SugarDataScreen> {
   List<SugarRecord> _sugarRecords = [];
+  List<SugarRecord> _filteredSugarRecords = [];
   bool _isLoading = true;
   String _currentUnit = 'Metric'; // Default unit
+
+  // Search controllers
+  final TextEditingController _searchStartDateController = TextEditingController();
+  final TextEditingController _searchEndDateController = TextEditingController();
+  MealType? _searchMealType;
+
+  // Pagination
+  int _currentPage = 0;
+  int _rowsPerPage = 10;
+  final List<int> _rowsPerPageOptions = [10, 20, 50, 100];
 
   // Form controllers
   final TextEditingController _dateController = TextEditingController();
@@ -45,6 +56,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     try {
       _sugarRecords = await databaseService.getSugarRecords();
       _currentUnit = await databaseService.getSetting('measurementUnit') ?? 'Metric'; // Fetch unit
+      _filterSugarRecords();
       setState(() {
         _isLoading = false;
       });
@@ -54,6 +66,31 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  void _filterSugarRecords() {
+    setState(() {
+      _filteredSugarRecords = _sugarRecords.where((record) {
+        final recordDate = record.date;
+        final startDate = _searchStartDateController.text.isNotEmpty
+            ? DateTime.parse(_searchStartDateController.text)
+            : null;
+        final endDate = _searchEndDateController.text.isNotEmpty
+            ? DateTime.parse(_searchEndDateController.text)
+            : null;
+
+        if (startDate != null && recordDate.isBefore(startDate)) {
+          return false;
+        }
+        if (endDate != null && recordDate.isAfter(endDate)) {
+          return false;
+        }
+        if (_searchMealType != null && record.mealType != _searchMealType) {
+          return false;
+        }
+        return true;
+      }).toList();
+    });
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -85,7 +122,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     }
   }
 
-  void _addSugarRecord(MealTimeCategory? selectedMealTimeCategory, MealType? selectedMealType) async {
+  void _saveSugarRecord(MealTimeCategory? selectedMealTimeCategory, MealType? selectedMealType, [SugarRecord? record]) async {
     final databaseService = Provider.of<DatabaseService>(context, listen: false);
 
     // Validate inputs
@@ -113,6 +150,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
 
     final newRecord = SugarRecord(
+      id: record?.id,
       date: date,
       time: timeOfDay,
       mealTimeCategory: selectedMealTimeCategory,
@@ -122,7 +160,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
 
     try {
-      await databaseService.insertSugarRecord(newRecord);
+      if (record == null) {
+        await databaseService.insertSugarRecord(newRecord);
+      } else {
+        await databaseService.updateSugarRecord(newRecord);
+      }
       // Refresh data after successful append
       _fetchSugarRecords();
       // Clear form
@@ -141,6 +183,19 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     }
   }
 
+  Future<void> _deleteSugarRecord(int id) async {
+    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+    try {
+      await databaseService.deleteSugarRecord(id);
+      _fetchSugarRecords();
+    } catch (e) {
+      debugPrint('Error deleting sugar record from database: \${e.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete record: \${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,67 +204,178 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _sugarRecords.isEmpty
-              ? const Center(child: Text('No sugar records found. Add one!'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: _sugarRecords.length,
-                  itemBuilder: (context, index) {
-                    final record = _sugarRecords[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Date: ${record.date.toLocal().toString().split(' ')[0]} at ${record.time.format(context)}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Meal: ${record.mealType.name.toUpperCase()} (${record.mealTimeCategory.name.toUpperCase()})',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            Text(
-                              'Value: ${record.value.toStringAsFixed(1)} ${_currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL'}',
-                              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.bottomRight,
-                              child: Chip(
-                                label: Text(record.status.name.toUpperCase()),
-                                backgroundColor: record.status == SugarStatus.good
-                                    ? Colors.green.shade100
-                                    : record.status == SugarStatus.normal
-                                        ? Colors.orange.shade100
-                                        : Colors.red.shade100,
-                                labelStyle: TextStyle(
-                                  color: record.status == SugarStatus.good
-                                      ? Colors.green.shade800
-                                      : record.status == SugarStatus.normal
-                                          ? Colors.orange.shade800
-                                          : Colors.red.shade800,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+          : Column(
+              children: [
+                _buildSummaryAndLatestRecordCards(),
+                Expanded(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 600), // Adjust as needed
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildSearchCard(),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: _buildRecordsTable(),
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showAddSugarRecordForm(context);
         },
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  Widget _buildSummaryAndLatestRecordCards() {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(child: _buildSummaryCards()),
+            Expanded(child: _buildLatestRecordCard()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchCard() {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchStartDateController,
+                    readOnly: true,
+                    onTap: () => _selectSearchDate(context, _searchStartDateController),
+                    decoration: const InputDecoration(
+                      labelText: 'Start Date',
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _searchEndDateController,
+                    readOnly: true,
+                    onTap: () => _selectSearchDate(context, _searchEndDateController),
+                    decoration: const InputDecoration(
+                      labelText: 'End Date',
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<MealType>(
+              value: _searchMealType,
+              decoration: const InputDecoration(labelText: 'Meal Type'),
+              items: MealType.values.map((type) {
+                return DropdownMenuItem<MealType>(
+                  value: type,
+                  child: Text(type.name.split(RegExp(r'(?=[A-Z])')).join(' ').toUpperCase()),
+                );
+              }).toList(),
+              onChanged: (MealType? newValue) {
+                setState(() {
+                  _searchMealType = newValue;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _filterSugarRecords,
+              child: const Text('Search'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectSearchDate(BuildContext context, TextEditingController controller) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = picked.toLocal().toString().split(' ')[0];
+      });
+    }
+  }
+
+  Widget _buildSummaryCards() {
+    if (_filteredSugarRecords.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final SugarRecord minRecord = _filteredSugarRecords.reduce((a, b) => a.value < b.value ? a : b);
+    final SugarRecord maxRecord = _filteredSugarRecords.reduce((a, b) => a.value > b.value ? a : b);
+    final double avgValue = _filteredSugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _filteredSugarRecords.length;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _buildSummaryCard('Min', minRecord.value, DateFormat.yMd().format(minRecord.date), Icons.arrow_downward, Colors.green),
+        _buildSummaryCard('Max', maxRecord.value, DateFormat.yMd().format(maxRecord.date), Icons.arrow_upward, Colors.red),
+        _buildSummaryCard('Avg', avgValue, '', Icons.trending_flat, Colors.blue),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(String title, double value, String date, IconData icon, Color color) {
+    return Column(
+      children: [
+        Text(date, style: const TextStyle(fontSize: 12)),
+        Icon(icon, color: color),
+        Text(title),
+        Text(value.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildLatestRecordCard() {
+    if (_filteredSugarRecords.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    IconData trendIcon = Icons.trending_flat;
+    if (_filteredSugarRecords.length > 1) {
+      final latestRecord = _filteredSugarRecords.first;
+      final previousRecord = _filteredSugarRecords[1];
+      if (latestRecord.value > previousRecord.value) {
+        trendIcon = Icons.trending_up;
+      } else if (latestRecord.value < previousRecord.value) {
+        trendIcon = Icons.trending_down;
+      }
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('Trend'),
+        Icon(trendIcon, size: 40),
+      ],
     );
   }
 
@@ -234,13 +400,20 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
-  void _showAddSugarRecordForm(BuildContext context) {
+  void _showAddSugarRecordForm(BuildContext context, {SugarRecord? record}) {
     // Clear controllers before showing form for new entry
-    _dateController.clear();
-    _timeController.clear();
-    _sugarValueController.clear();
-    MealTimeCategory? selectedMealTimeCategory;
-    MealType? selectedMealType;
+    if (record == null) {
+      _dateController.clear();
+      _timeController.clear();
+      _sugarValueController.clear();
+    } else {
+      _dateController.text = record.date.toLocal().toString().split(' ')[0];
+      _timeController.text = record.time.format(context);
+      _sugarValueController.text = record.value.toString();
+    }
+
+    MealTimeCategory? selectedMealTimeCategory = record?.mealTimeCategory;
+    MealType? selectedMealType = record?.mealType;
 
     showDialog(
       context: context,
@@ -248,7 +421,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Add New Sugar Record'),
+              title: Text(record == null ? 'Add New Sugar Record' : 'Edit Sugar Record'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -329,7 +502,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _addSugarRecord(selectedMealTimeCategory, selectedMealType),
+                  onPressed: () => _saveSugarRecord(selectedMealTimeCategory, selectedMealType, record),
                   icon: const Icon(Icons.save),
                   label: const Text('Save'),
                   style: ElevatedButton.styleFrom(
@@ -342,6 +515,115 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildRecordsTable() {
+    if (_filteredSugarRecords.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final paginatedRecords = _filteredSugarRecords
+        .skip(_currentPage * _rowsPerPage)
+        .take(_rowsPerPage)
+        .toList();
+
+    return Column(
+      children: [
+        DataTable(
+          columns: const [
+            DataColumn(label: Text('Date')),
+            DataColumn(label: Text('Time')),
+            DataColumn(label: Text('Meal Type')),
+            DataColumn(label: Text('Value')),
+            DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Actions')),
+          ],
+          rows: paginatedRecords.map((record) {
+            return DataRow(
+              color: MaterialStateProperty.resolveWith<Color?>(
+                  (Set<MaterialState> states) {
+                if (record.status == SugarStatus.bad) {
+                  return Colors.red.shade100;
+                }
+                return null; // Use the default color.
+              }),
+              cells: [
+                DataCell(Text(DateFormat.yMd().format(record.date))),
+                DataCell(Text(record.time.format(context))),
+                DataCell(Text(record.mealType.name)),
+                DataCell(Text(record.value.toStringAsFixed(1))),
+                DataCell(Text(record.status.name)),
+                DataCell(Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () {
+                        _showAddSugarRecordForm(context, record: record);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () {
+                        _deleteSugarRecord(record.id!);
+                      },
+                    ),
+                  ],
+                )),
+              ],
+            );
+          }).toList(),
+        ),
+        _buildPaginationControls(),
+      ],
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final int totalRecords = _filteredSugarRecords.length;
+    final int totalPages = (totalRecords / _rowsPerPage).ceil();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _currentPage > 0
+              ? () {
+                  setState(() {
+                    _currentPage--;
+                  });
+                }
+              : null,
+        ),
+        Text('Page ${_currentPage + 1} of $totalPages'),
+        IconButton(
+          icon: const Icon(Icons.arrow_forward),
+          onPressed: _currentPage < totalPages - 1
+              ? () {
+                  setState(() {
+                    _currentPage++;
+                  });
+                }
+              : null,
+        ),
+        const SizedBox(width: 20),
+        DropdownButton<int>(
+          value: _rowsPerPage,
+          items: _rowsPerPageOptions.map((int value) {
+            return DropdownMenuItem<int>(
+              value: value,
+              child: Text('$value rows'),
+            );
+          }).toList(),
+          onChanged: (int? newValue) {
+            setState(() {
+              _rowsPerPage = newValue!;
+              _currentPage = 0;
+            });
+          },
+        ),
+      ],
     );
   }
 }

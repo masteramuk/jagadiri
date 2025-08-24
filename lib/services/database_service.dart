@@ -221,6 +221,42 @@ class DatabaseService {
     }
   }
 
+  Future<int> updateSugarRecord(SugarRecord record) async {
+    final db = await database;
+    final map = record.toDbMap();
+    debugPrint('Updating sugar record: $map');
+    try {
+      final rowsAffected = await db.update(
+        'sugar_records',
+        map,
+        where: 'id = ?',
+        whereArgs: [record.id],
+      );
+      debugPrint('Sugar record updated. RowsAffected: $rowsAffected');
+      return rowsAffected;
+    } catch (e, s) {
+      debugPrint('Error updating sugar record: $e\n$s');
+      rethrow;
+    }
+  }
+
+  Future<int> deleteSugarRecord(int id) async {
+    final db = await database;
+    debugPrint('Deleting sugar record with id: $id');
+    try {
+      final rowsAffected = await db.delete(
+        'sugar_records',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      debugPrint('Sugar record deleted. Rows affected: $rowsAffected');
+      return rowsAffected;
+    } catch (e, s) {
+      debugPrint('Error deleting sugar record: $e\n$s');
+      rethrow;
+    }
+  }
+
   // === BP Record Operations ===
   Future<int> insertBPRecord(BPRecord record) async {
     final db = await database;
