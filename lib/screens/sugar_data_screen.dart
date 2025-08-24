@@ -200,13 +200,14 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diabetes Tracker'),
+        title: const Text('Sugar Level Tracker'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 _buildSummaryAndLatestRecordCards(),
+                _buildLatestRecordCard(),
                 Expanded(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 600), // Adjust as needed
@@ -239,12 +240,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       margin: const EdgeInsets.all(8.0),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Expanded(child: _buildSummaryCards()),
-            Expanded(child: _buildLatestRecordCard()),
-          ],
-        ),
+        child: _buildSummaryCards(),
       ),
     );
   }
@@ -300,14 +296,32 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               },
             ),
             const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _filterSugarRecords,
-              child: const Text('Search'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _filterSugarRecords,
+                  child: const Text('Search'),
+                ),
+                ElevatedButton(
+                  onPressed: _resetSearch,
+                  child: const Text('Reset'),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _resetSearch() {
+    setState(() {
+      _searchStartDateController.clear();
+      _searchEndDateController.clear();
+      _searchMealType = null;
+      _filterSugarRecords();
+    });
   }
 
   Future<void> _selectSearchDate(BuildContext context, TextEditingController controller) async {
@@ -354,29 +368,85 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
+  String _capitalizeWords(String text) {
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   Widget _buildLatestRecordCard() {
-    if (_filteredSugarRecords.isEmpty) {
+    if (_sugarRecords.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    IconData trendIcon = Icons.trending_flat;
-    if (_filteredSugarRecords.length > 1) {
-      final latestRecord = _filteredSugarRecords.first;
-      final previousRecord = _filteredSugarRecords[1];
-      if (latestRecord.value > previousRecord.value) {
-        trendIcon = Icons.trending_up;
-      } else if (latestRecord.value < previousRecord.value) {
-        trendIcon = Icons.trending_down;
-      }
+    final latestRecord = _sugarRecords.first;
+    final dateTime = latestRecord.date.add(Duration(hours: latestRecord.time.hour, minutes: latestRecord.time.minute));
+    final formattedDate = DateFormat('dd-MMM-yyyy hh:mm a').format(dateTime);
+
+    final mealTypeString = latestRecord.mealType.name.split(RegExp(r'(?=[A-Z])')).join(' ');
+    final subtitle = _capitalizeWords('${latestRecord.mealTimeCategory.name} $mealTypeString');
+
+    final trendIcon = _getTrendIcon(latestRecord);
+    final statusIcon = _getStatusIcon(latestRecord.status);
+    final unit = _currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
+
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(formattedDate, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(subtitle, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text('${latestRecord.value.toStringAsFixed(1)} $unit', style: Theme.of(context).textTheme.headlineSmall),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                statusIcon,
+                const SizedBox(height: 8),
+                trendIcon,
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Icon _getStatusIcon(SugarStatus status) {
+    switch (status) {
+      case SugarStatus.good:
+        return const Icon(Icons.thumb_up, color: Colors.green, size: 40);
+      case SugarStatus.normal:
+        return const Icon(Icons.thumb_up_alt_outlined, color: Colors.blue, size: 40);
+      case SugarStatus.bad:
+        return const Icon(Icons.thumb_down, color: Colors.red, size: 40);
+    }
+  }
+
+  Icon _getTrendIcon(SugarRecord latestRecord) {
+    final relevantRecords = _sugarRecords.where((record) => record.mealType == latestRecord.mealType).toList();
+    if (relevantRecords.length < 2) {
+      return const Icon(Icons.trending_flat, size: 40);
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('Trend'),
-        Icon(trendIcon, size: 40),
-      ],
-    );
+    final previousRecord = relevantRecords[1];
+    if (latestRecord.value > previousRecord.value) {
+      return const Icon(Icons.trending_up, color: Colors.red, size: 40);
+    } else if (latestRecord.value < previousRecord.value) {
+      return const Icon(Icons.trending_down, color: Colors.green, size: 40);
+    } else {
+      return const Icon(Icons.trending_flat, size: 40);
+    }
   }
 
   Widget _buildSugarEntryRow(String label, double value, String unit) {
@@ -412,8 +482,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       _sugarValueController.text = record.value.toString();
     }
 
-    MealTimeCategory? selectedMealTimeCategory = record?.mealTimeCategory;
-    MealType? selectedMealType = record?.mealType;
+    MealTimeCategory? selectedMealTimeCategory = record?.mealTimeCategory ?? MealTimeCategory.before;
+    MealType? selectedMealType = record?.mealType ?? MealType.breakfast;
 
     showDialog(
       context: context,
