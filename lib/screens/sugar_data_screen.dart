@@ -351,6 +351,10 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     return Card(
       margin: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -411,6 +415,9 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   Widget _searchCard() {
     return Card(
       margin: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(
