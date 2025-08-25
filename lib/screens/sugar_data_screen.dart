@@ -221,38 +221,104 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   /* -------------------- Widget helpers -------------------- */
   Widget _summaryCards() {
     if (_filteredSugarRecords.isEmpty) return const SizedBox.shrink();
-    final min = _filteredSugarRecords
-        .reduce((a, b) => a.value < b.value ? a : b);
-    final max = _filteredSugarRecords
-        .reduce((a, b) => a.value > b.value ? a : b);
-    final avg = _filteredSugarRecords
-        .map((e) => e.value)
-        .reduce((a, b) => a + b) /
-        _filteredSugarRecords.length;
 
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _summaryTile('Min', min.value, min.date),
-          _summaryTile('Max', max.value, max.date),
-          _summaryTile('Avg', avg, null),
-        ],
-      ),
-    );
-  }
+    final minRecord = _filteredSugarRecords.reduce((a, b) => a.value < b.value ? a : b);
+    final maxRecord = _filteredSugarRecords.reduce((a, b) => a.value > b.value ? a : b);
+    final avgValue = _filteredSugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _filteredSugarRecords.length;
+    final unit = _currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
 
-  Widget _summaryTile(String label, double value, DateTime? date) {
-    return Column(
-      children: [
-        if (date != null) Text(DateFormat.yMd().format(date)),
-        Text(label),
-        Text(
-          value.toStringAsFixed(1),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    // Trend icon logic
+    IconData trendIcon = Icons.trending_flat;
+    Color? trendColor;
+    IconData signalIcon = Icons.horizontal_rule;
+    if (_sugarRecords.length > 1) {
+      final latest = _sugarRecords.first;
+      final previous = _sugarRecords[1];
+      if (latest.value > previous.value) {
+        trendIcon = Icons.trending_up;
+        trendColor = Colors.red;
+        signalIcon = Icons.thumb_down;
+      } else if (latest.value < previous.value) {
+        trendIcon = Icons.trending_down;
+        trendColor = Colors.green;
+        signalIcon = Icons.thumb_up;
+      } else {
+        trendIcon = Icons.trending_flat;
+        trendColor = Colors.grey;
+        signalIcon = Icons.thumbs_up_down;
+      }
+    }
+
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Card(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Text(DateFormat('dd-MMM-yy').format(minRecord.date)),
+                      const Text('Min'),
+                      Text('${minRecord.value.toStringAsFixed(1)} $unit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Card(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Text(DateFormat('dd-MMM-yy').format(maxRecord.date)),
+                      const Text('Max'),
+                      Text('${maxRecord.value.toStringAsFixed(1)} $unit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Card(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Avg'),
+                      Text('${avgValue.toStringAsFixed(1)} $unit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Card(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(trendIcon, color: trendColor),
+                      Icon(signalIcon, color: trendColor),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
