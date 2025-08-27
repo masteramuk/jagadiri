@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/services/database_service.dart';
+import 'package:collection/collection.dart';
 
 class SugarDataScreen extends StatefulWidget {
   const SugarDataScreen({super.key});
@@ -138,7 +139,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     final date = DateTime.parse(_dateController.text);
     final time = TimeOfDay.fromDateTime(
-        DateFormat.jm().parse(_timeController.text));
+        DateFormat('hh:mm a').parse(_timeController.text));
     final value = double.tryParse(_sugarValueController.text) ?? 0.0;
     final status = SugarRecord.calculateSugarStatus(cat, value);
 
@@ -226,11 +227,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   Widget _summaryCards() {
-    if (_filteredSugarRecords.isEmpty) return const SizedBox.shrink();
+    if (_sugarRecords.isEmpty) return const SizedBox.shrink();
 
-    final minRecord = _filteredSugarRecords.reduce((a, b) => a.value < b.value ? a : b);
-    final maxRecord = _filteredSugarRecords.reduce((a, b) => a.value > b.value ? a : b);
-    final avgValue = _filteredSugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _filteredSugarRecords.length;
+    final minRecord = _sugarRecords.reduce((a, b) => a.value < b.value ? a : b);
+    final maxRecord = _sugarRecords.reduce((a, b) => a.value > b.value ? a : b);
+    final avgValue = _sugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _sugarRecords.length;
     final unit = _currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
 
     // Trend icon logic
@@ -533,59 +534,129 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
+  DataColumn _buildMealColumn(String header1, String header2) {
+    return DataColumn(
+      label: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(header1, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(header2, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  DataColumn _buildMergedHeader(String text) {
+    return DataColumn(
+      label: Center(
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Map<DateTime, List<SugarRecord>> _groupRecordsByDate() {
+    return groupBy(_filteredSugarRecords, (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day));
+  }
+
   Widget _recordsTable() {
-    final rows = _filteredSugarRecords
+    final groupedRecords = _groupRecordsByDate();
+    final dates = groupedRecords.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    final paginatedDates = dates
         .skip(_currentPage * _rowsPerPage)
         .take(_rowsPerPage)
         .toList();
-    if (rows.isEmpty) return const Text('No records');
-    final unit = _currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
+
+    if (paginatedDates.isEmpty) return const Center(child: Text('No records found'));
+
+    final mealTimeCategories = MealTimeCategory.values;
+    final mealTypes = MealType.values;
 
     return Column(
       children: [
         DataTable(
-          columns: const [
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Time')),
-            DataColumn(label: Text('Meal')),
-            DataColumn(label: Text('Value')),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Actions')),
+          columnSpacing: 10,
+          horizontalMargin: 8,
+          columns: [
+            _buildMergedHeader('Date'),
+            _buildMergedHeader('Time'),
+            ...mealTimeCategories.expand((cat) {
+              return mealTypes.map((type) {
+                return _buildMealColumn(
+                  _formatMealType(cat.name),
+                  _formatMealType(type.name),
+                );
+              });
+            }),
+            _buildMergedHeader(''), // Indicator
+            _buildMergedHeader(''), // Actions
           ],
-          rows: rows.map((r) {
+          rows: paginatedDates.map((date) {
+            final recordsForDate = groupedRecords[date]!;
+            final time = recordsForDate.length == 1
+                ? recordsForDate.first.time.format(context)
+                : '-';
+            bool isGood = recordsForDate.every((r) => r.status == SugarStatus.good);
+
             return DataRow(
-              color: MaterialStateProperty.all(
-                  r.status == SugarStatus.bad ? Colors.red.shade100 : null),
               cells: [
-                DataCell(Text(DateFormat.yMd().format(r.date))),
-                DataCell(Text(r.time.format(context))),
-                DataCell(Text(_formatMealType(r.mealType.name))),
-                DataCell(Text('${r.value.toStringAsFixed(1)} $unit')),
-                DataCell(Text(r.status.name)),
-                DataCell(Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _showFormDialog(editing: r),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _deleteRecord(r.id!),
-                    ),
-                  ],
+                DataCell(Text(DateFormat.yMd().format(date))),
+                DataCell(Text(time)),
+                ...mealTimeCategories.expand((cat) {
+                  return mealTypes.map((type) {
+                    final record = recordsForDate.firstWhereOrNull(
+                          (r) => r.mealTimeCategory == cat && r.mealType == type,
+                    );
+                    return DataCell(
+                      Text(record?.value.toStringAsFixed(1) ?? ''),
+                    );
+                  });
+                }),
+                DataCell(Icon(
+                  isGood ? Icons.thumb_up : Icons.thumb_down,
+                  color: isGood ? Colors.green : Colors.red,
                 )),
+                DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          if (recordsForDate.length == 1) {
+                            _showFormDialog(editing: recordsForDate.first);
+                          } else {
+                            // Handle multiple records editing
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          for (var record in recordsForDate) {
+                            _deleteRecord(record.id!);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ],
             );
           }).toList(),
         ),
-        _pagination(),
+        _pagination(dates.length),
       ],
     );
   }
 
-  Widget _pagination() {
-    final total = _filteredSugarRecords.length;
-    final pages = (total / _rowsPerPage).ceil();
+  Widget _pagination(int totalRows) {
+    final totalPages = (totalRows / _rowsPerPage).ceil();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -595,10 +666,10 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               ? () => setState(() => _currentPage--)
               : null,
         ),
-        Text('Page ${_currentPage + 1} of $pages'),
+        Text('Page ${_currentPage + 1} of $totalPages'),
         IconButton(
           icon: const Icon(Icons.arrow_forward),
-          onPressed: _currentPage < pages - 1
+          onPressed: _currentPage < totalPages - 1
               ? () => setState(() => _currentPage++)
               : null,
         ),
