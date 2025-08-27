@@ -47,6 +47,7 @@ dependencies:
   sqflite_common_ffi: any
   sqflite_common_ffi_web: any
   http: ^1.2.1
+  collection: ^1.18.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
