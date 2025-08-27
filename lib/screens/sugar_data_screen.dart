@@ -219,6 +219,12 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   /* -------------------- Widget helpers -------------------- */
+  String _formatMealType(String mealType) {
+    if (mealType.isEmpty) return '';
+    var result = mealType.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
+    return result[0].toUpperCase() + result.substring(1);
+  }
+
   Widget _summaryCards() {
     if (_filteredSugarRecords.isEmpty) return const SizedBox.shrink();
 
@@ -371,8 +377,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   const SizedBox(height: 4),
                   // Meal time & type with capitalised first letters
                   Text(
-                    '${latest.mealTimeCategory.name[0].toUpperCase()}${latest.mealTimeCategory.name.substring(1).toLowerCase()}  '
-                        '${latest.mealType.name[0].toUpperCase()}${latest.mealType.name.substring(1).toLowerCase()}',
+                    '${_formatMealType(latest.mealTimeCategory.name)}  '
+                        '${_formatMealType(latest.mealType.name)}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 4),
@@ -419,8 +425,9 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -449,30 +456,76 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 ),
               ],
             ),
-            DropdownButtonFormField<MealType>(
-              value: _searchMealType,
-              hint: const Text('All Meal Types'),
-              items: MealType.values
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
-                  .toList(),
-              onChanged: (val) {
-                setState(() => _searchMealType = val);
-                _filter();
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Use a breakpoint to decide which button style to use
+                bool useIconButtons = constraints.maxWidth < 400;
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<MealType>(
+                        value: _searchMealType,
+                        hint: const Text('All Meal Types'),
+                        items: MealType.values
+                            .map((e) => DropdownMenuItem(
+                                  value: e,
+                                  child: Text(_formatMealType(e.name)),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() => _searchMealType = val);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (useIconButtons) ...[
+                      Tooltip(
+                        message: 'Search',
+                        child: ElevatedButton(
+                          onPressed: _filter,
+                          child: const Icon(Icons.search),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: 'Reset',
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _searchStartDateController.clear();
+                            _searchEndDateController.clear();
+                            setState(() {
+                              _searchMealType = null;
+                            });
+                            _filter();
+                          },
+                          child: const Icon(Icons.refresh),
+                        ),
+                      ),
+                    ] else ...[
+                      ElevatedButton.icon(
+                        onPressed: _filter,
+                        icon: const Icon(Icons.search),
+                        label: const Text('Search'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _searchStartDateController.clear();
+                          _searchEndDateController.clear();
+                          setState(() {
+                            _searchMealType = null;
+                          });
+                          _filter();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reset'),
+                      ),
+                    ],
+                  ],
+                );
               },
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(onPressed: _filter, child: const Text('Search')),
-                ElevatedButton(
-                    onPressed: () {
-                      _searchStartDateController.clear();
-                      _searchEndDateController.clear();
-                      _searchMealType = null;
-                      _filter();
-                    },
-                    child: const Text('Reset')),
-              ],
             ),
           ],
         ),
@@ -506,7 +559,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               cells: [
                 DataCell(Text(DateFormat.yMd().format(r.date))),
                 DataCell(Text(r.time.format(context))),
-                DataCell(Text(r.mealType.name)),
+                DataCell(Text(_formatMealType(r.mealType.name))),
                 DataCell(Text('${r.value.toStringAsFixed(1)} $unit')),
                 DataCell(Text(r.status.name)),
                 DataCell(Row(
@@ -603,7 +656,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 DropdownButtonFormField<MealTimeCategory>(
                   value: cat,
                   items: MealTimeCategory.values
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                      .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
                   onChanged: (v) => setState2(() => cat = v),
                   decoration: const InputDecoration(labelText: 'Meal Time'),
@@ -611,7 +664,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 DropdownButtonFormField<MealType>(
                   value: type,
                   items: MealType.values
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                      .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
                   onChanged: (v) => setState2(() => type = v),
                   decoration: const InputDecoration(labelText: 'Meal Type'),
