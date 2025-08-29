@@ -93,10 +93,10 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         final d = rec.date;
         final s = _searchStartDateController.text.isEmpty
             ? null
-            : DateTime.parse(_searchStartDateController.text);
+            : DateFormat('dd-MMM-yyyy').parse(_searchStartDateController.text);
         final e = _searchEndDateController.text.isEmpty
             ? null
-            : DateTime.parse(_searchEndDateController.text);
+            : DateFormat('dd-MMM-yyyy').parse(_searchEndDateController.text);
 
         if (s != null && d.isBefore(s)) return false;
         if (e != null && d.isAfter(e)) return false;
@@ -323,20 +323,91 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
   /* -------------------- Summary Cards (Min, Max, Avg, Trend) -------------------- */
   Widget _summaryCards() {
-    if (_sugarRecords.isEmpty) return const SizedBox.shrink();
+    if (_filteredSugarRecords.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Card(
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: const [
+                        Text('-'),
+                        Text('Min'),
+                        Text('NA', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Card(
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: const [
+                        Text('-'),
+                        Text('Max'),
+                        Text('NA', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Card(
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text('Avg'),
+                        Text('NA', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Card(
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.trending_flat, color: Colors.grey),
+                        Icon(Icons.horizontal_rule, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-    final minRecord = _sugarRecords.reduce((a, b) => a.value < b.value ? a : b);
-    final maxRecord = _sugarRecords.reduce((a, b) => a.value > b.value ? a : b);
-    final avgValue = _sugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _sugarRecords.length;
+    final minRecord = _filteredSugarRecords.reduce((a, b) => a.value < b.value ? a : b);
+    final maxRecord = _filteredSugarRecords.reduce((a, b) => a.value > b.value ? a : b);
+    final avgValue = _filteredSugarRecords.map((e) => e.value).reduce((a, b) => a + b) / _filteredSugarRecords.length;
     final unit = _currentUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
 
     // Trend icon logic
     IconData trendIcon = Icons.trending_flat;
     Color? trendColor;
     IconData signalIcon = Icons.horizontal_rule;
-    if (_sugarRecords.length > 1) {
-      final latest = _sugarRecords.first;
-      final previous = _sugarRecords[1];
+    if (_filteredSugarRecords.length > 1) {
+      final latest = _filteredSugarRecords.first;
+      final previous = _filteredSugarRecords[1];
       if (latest.value > previous.value) {
         trendIcon = Icons.trending_up;
         trendColor = Colors.red;
