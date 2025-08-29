@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:jagadiri/models/sugar_record.dart';
@@ -18,8 +19,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   List<SugarRecord> _filteredSugarRecords = [];
   bool _isLoading = true;
   late String _currentUnit;
-  bool _isLatestCardExpanded = true;
-  bool _isSearchCardExpanded = true;
+  bool _isLatestCardExpanded = false;
+  bool _isSearchCardExpanded = false;
 
   /* ---- Cached previous record per meal type ---- */
   final Map<MealType, SugarRecord?> _previousByMeal = {};
@@ -106,14 +107,15 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
   /* -------------------- Date / Time Pickers -------------------- */
   Future<void> _pickDate(TextEditingController ctrl) async {
+    final now = DateTime.now();
     final d = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 365 * 100)), // −100 years
+      lastDate: now.add(const Duration(days: 365 * 100)),      // +100 years
     );
     if (d != null) {
-      setState(() => ctrl.text = DateFormat('yyyy-MM-dd').format(d));
+      setState(() => ctrl.text = DateFormat('dd-MMM-yyyy').format(d));
     }
   }
 
@@ -139,7 +141,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       return;
     }
 
-    final date = DateTime.parse(_dateController.text);
+    final date = DateFormat('dd-MMM-yyyy').parse(_dateController.text);
     final time = TimeOfDay.fromDateTime(
         DateFormat('hh:mm a').parse(_timeController.text));
     final value = double.tryParse(_sugarValueController.text) ?? 0.0;
@@ -263,7 +265,10 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       child: Column(
         children: [
           ListTile(
-            title: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            title: Text(
+                title,
+                style: Theme. of(context).textTheme.titleMedium,
+            ),
             trailing: IconButton(
               icon: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
               onPressed: onToggle,
@@ -271,7 +276,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             onTap: onToggle, // Allow tapping the tile to toggle
           ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeInOut,
             child: isExpanded
                 ? Column(
@@ -289,12 +294,15 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       ),
     );
   }
+
+  /* Capitalise first letter and add spaces before capitals */
   String _formatMealType(String mealType) {
     if (mealType.isEmpty) return '';
     var result = mealType.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
     return result[0].toUpperCase() + result.substring(1);
   }
 
+  /* -------------------- Summary Cards (Min, Max, Avg, Trend) -------------------- */
   Widget _summaryCards() {
     if (_sugarRecords.isEmpty) return const SizedBox.shrink();
 
@@ -325,7 +333,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       }
     }
 
-
+    /* -------------------- Cards Layout -------------------- */
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: IntrinsicHeight(
@@ -731,7 +739,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         .toIso8601String()
         .split('T')
         .first ??
-        DateFormat('yyyy-MM-dd').format(DateTime.now());
+        DateFormat('dd-MMM-yyyy').format(DateTime.now());
     _timeController.text = editing?.time.format(context) ?? '';
     _sugarValueController.text = editing?.value.toString() ?? '';
 
@@ -742,7 +750,23 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setState2) => AlertDialog(
-          title: Text(editing == null ? 'Add Record' : 'Edit Record'),
+          title: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            ),
+            child: Text(
+              editing == null ? 'Add Record': 'Edit Record',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -777,11 +801,27 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   onChanged: (v) => setState2(() => type = v),
                   decoration: const InputDecoration(labelText: 'Meal Type'),
                 ),
-                TextField(
+                TextFormField(
                   controller: _sugarValueController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Sugar Value'),
-                ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*$')), // digits + single dot
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Sugar Value',
+                    hintText: _currentUnit == 'Metric' ? '0.5 – 25.0 mmol/L' : '9 – 450 mg/dL',
+                  ),
+                  validator: (value) {
+                    final v = double.tryParse(value ?? '');
+                    if (v == null) return 'Enter a valid number';
+                    if (_currentUnit == 'Metric') {
+                      if (v < 0.5 || v > 25.0) return 'Range 0.5 – 25.0 mmol/L';
+                    } else {
+                      if (v < 9 || v > 450) return 'Range 9 – 450 mg/dL';
+                    };
+                    return null;
+                  },
+                )
               ],
             ),
           ),
