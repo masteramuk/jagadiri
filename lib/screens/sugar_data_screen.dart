@@ -7,7 +7,7 @@ import 'package:jagadiri/services/database_service.dart';
 import 'package:collection/collection.dart';
 
 import 'package:jagadiri/providers/user_profile_provider.dart';
-import 'package:jagadiri/models/sugar_reference.dart';
+import 'package:jagadiri/utils/sugar_analysis.dart';
 
 class SugarDataScreen extends StatefulWidget {
   const SugarDataScreen({super.key});
@@ -131,70 +131,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   /* -------------------- CRUD -------------------- */
-  Future<SugarStatus> _getSugarStatus(double value, MealTimeCategory mealTimeCategory, MealType mealType) async {
-    final db = Provider.of<DatabaseService>(context, listen: false);
-    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-    final unit = _currentUnit;
-    final sugarScenario = userProfileProvider.userProfile?.sugarScenario;
-
-    // 1. Check for Hypoglycaemia (critical low)
-    final hypoReferences = await db.getSugarReferencesByQuery(
-      unit: unit,
-      scenario: 'Hypoglycaemia',
-    );
-    if (hypoReferences.isNotEmpty && value < hypoReferences.first.maxValue) {
-      return SugarStatus.low;
-    }
-
-    // 2. Check for Severe-Hyper (critical high)
-    final hyperReferences = await db.getSugarReferencesByQuery(
-      unit: unit,
-      scenario: 'Severe-Hyper',
-    );
-    if (hyperReferences.isNotEmpty && value > hyperReferences.first.minValue) {
-      return SugarStatus.high;
-    }
-
-    // 3. If not in critical ranges, check scenario-specific ranges
-    if (sugarScenario != null) {
-      List<SugarReference> references = await db.getSugarReferencesByQuery(
-        unit: unit,
-        scenario: sugarScenario,
-        mealTime: mealTimeCategory.name,
-        mealType: mealType.name,
-      );
-
-      if (references.isEmpty) {
-        references = await db.getSugarReferencesByQuery(
-          unit: unit,
-          scenario: sugarScenario,
-          mealTime: mealTimeCategory.name,
-          mealType: 'ANY',
-        );
-      }
-
-      if (references.isEmpty) {
-        references = await db.getSugarReferencesByQuery(
-          unit: unit,
-          scenario: sugarScenario,
-          mealTime: 'ANY',
-          mealType: 'ANY',
-        );
-      }
-
-      if (references.isNotEmpty) {
-        final SugarReference reference = references.first;
-        if (value < reference.minValue) {
-          return SugarStatus.low;
-        } else if (value > reference.maxValue) {
-          return SugarStatus.high;
-        }
-      }
-    }
-
-    return SugarStatus.good;
-  }
-
   Future<void> _saveRecord(MealTimeCategory? cat, MealType? type,
       [SugarRecord? editing]) async {
     if (_dateController.text.isEmpty ||
@@ -212,7 +148,23 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final time = TimeOfDay.fromDateTime(
         DateFormat('hh:mm a').parse(_timeController.text));
     final value = double.tryParse(_sugarValueController.text) ?? 0.0;
-    final status = await _getSugarStatus(value, cat, type);
+    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    final userDiabetesType = userProfileProvider.userProfile?.sugarScenario ?? 'non-diabetic';
+
+    final status = await analyseStatus(
+      records: [
+        SugarRecord(
+          date: date,
+          time: time,
+          mealTimeCategory: cat,
+          mealType: type,
+          value: value,
+          status: SugarStatus.good, // temporary status
+        )
+      ],
+      unit: _currentUnit,
+      userDiabetesType: userDiabetesType,
+    );
 
     final record = SugarRecord(
       id: editing?.id,
@@ -727,7 +679,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             for (var category in MealTimeCategory.values) {
               final key = '${type.name}_${category.name}';
               final record = recordsMap[key];
-              cells.add(DataCell(Center(child: Text(record?.value.toStringAsFixed(1) ?? ''))));
+              cells.add(DataCell(Center(child: FittedBox(child: Text(record?.value.toStringAsFixed(1) ?? '')))));
             }
           }
 
