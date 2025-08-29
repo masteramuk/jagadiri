@@ -9,6 +9,7 @@ import 'package:jagadiri/utils/unit_converter.dart';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:jagadiri/screens/edit_sugar_reference_screen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -444,6 +445,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                   }).toList(),
                                 ),// End of DropdownButton
                               ), // End of ListTile
+                              ListTile(
+                                title: const Text('Edit Sugar Reference'),
+                                trailing: const Icon(Icons.edit),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const EditSugarReferenceScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
                             ],// End of children of Column
                         ), //end of Column
                       ), // End of Padding
