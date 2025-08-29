@@ -207,41 +207,41 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       appBar: AppBar(title: const Text('Sugar Level Tracker')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          _summaryCards(),
-          _buildExpandableCard(
-            title: 'Latest Record',
-            content: _latestCard(),
-            isExpanded: _isLatestCardExpanded,
-            onToggle: () {
-              setState(() {
-                _isLatestCardExpanded = !_isLatestCardExpanded;
-              });
-            },
-          ),
-          _buildExpandableCard(
-            title: 'Search',
-            content: _searchCard(),
-            isExpanded: _isSearchCardExpanded,
-            onToggle: () {
-              setState(() {
-                _isSearchCardExpanded = !_isSearchCardExpanded;
-              });
-            },
-          ),
-          Expanded(
-            child: SingleChildScrollView(
+          : SingleChildScrollView(
               child: Column(
                 children: [
-                  _recordsTable(theme, groupedByDate, sortedDates),
-                  _pagination(sortedDates.length), // Pagination is always visible
+                  _summaryCards(),
+                  _buildExpandableCard(
+                    title: 'Latest Record',
+                    content: _latestCard(),
+                    isExpanded: _isLatestCardExpanded,
+                    onToggle: () {
+                      setState(() {
+                        _isLatestCardExpanded = !_isLatestCardExpanded;
+                      });
+                    },
+                  ),
+                  _buildExpandableCard(
+                    title: 'Search',
+                    content: _searchCard(),
+                    isExpanded: _isSearchCardExpanded,
+                    onToggle: () {
+                      setState(() {
+                        _isSearchCardExpanded = !_isSearchCardExpanded;
+                      });
+                    },
+                  ),
+                  SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _recordsTable(theme, groupedByDate, sortedDates),
+                        _pagination(sortedDates.length), // Pagination is always visible
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormDialog(),
         child: const Icon(Icons.add),
