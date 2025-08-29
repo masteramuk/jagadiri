@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 enum SugarStatus {
   good,
-  normal,
-  bad,
+  high,
+  low,
 }
 
 enum MealTimeCategory {
@@ -75,12 +75,12 @@ class SugarRecord {
       date: DateTime.fromMillisecondsSinceEpoch(map['date']),
       time: TimeOfDay(hour: int.parse(map['time'].split(':')[0]), minute: int.parse(map['time'].split(':')[1])),
       mealTimeCategory: MealTimeCategory.values.firstWhere(
-          (e) => e.toString().split('.').last == map['mealTimeCategory']),
+          (e) => e.toString().split('.').last == map['mealTimeCategory'], orElse: () => MealTimeCategory.before),
       mealType: MealType.values.firstWhere(
-          (e) => e.toString().split('.').last == map['mealType']),
+          (e) => e.toString().split('.').last == map['mealType'], orElse: () => MealType.breakfast),
       value: map['value'],
       status: SugarStatus.values.firstWhere(
-          (e) => e.toString().split('.').last == map['status']),
+          (e) => e.toString().split('.').last == map['status'], orElse: () => SugarStatus.good),
     );
   }
 
@@ -97,30 +97,7 @@ class SugarRecord {
     };
   }
 
-  static SugarStatus calculateSugarStatus(
-    MealTimeCategory mealTimeCategory,
-    double value,
-  ) {
-    // Clinical ranges (illustrative, consult medical guidelines for accuracy)
-    // Assuming mg/dL for now. Conversion will be handled at display.
+  
 
-    if (mealTimeCategory == MealTimeCategory.before) {
-      // Before meal (fasting or pre-meal)
-      if (value < 70 || value > 130) {
-        return SugarStatus.bad;
-      } else if (value >= 70 && value <= 100) {
-        return SugarStatus.good;
-      } else {
-        return SugarStatus.normal; // 101-130
-      }
-    } else { // After meal
-      if (value > 180) {
-        return SugarStatus.bad;
-      } else if (value <= 140) {
-        return SugarStatus.good;
-      } else {
-        return SugarStatus.normal; // 141-180
-      }
-    }
-  }
+  
 }

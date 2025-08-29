@@ -9,6 +9,7 @@ class UserProfile {
   String measurementUnit; // 'Metric' or 'US'
   String? gender;
   String? exerciseFrequency;
+  String? sugarScenario; // New field for sugar scenario
 
   // Calculated suitable metrics and targets
   double? suitableSugarMin;
@@ -31,6 +32,7 @@ class UserProfile {
     required this.measurementUnit,
     this.gender,
     this.exerciseFrequency,
+    this.sugarScenario, // Add this line
     this.suitableSugarMin,
     this.suitableSugarMax,
     this.suitableSystolicMin,
@@ -65,6 +67,7 @@ class UserProfile {
       'measurementUnit': measurementUnit,
       'gender': gender,
       'exerciseFrequency': exerciseFrequency,
+      'sugarScenario': sugarScenario, // Add this line
       'suitableSugarMin': suitableSugarMin,
       'suitableSugarMax': suitableSugarMax,
       'suitableSystolicMin': suitableSystolicMin,
@@ -89,6 +92,7 @@ class UserProfile {
       measurementUnit: map['measurementUnit'],
       gender: map['gender'],
       exerciseFrequency: map['exerciseFrequency'],
+      sugarScenario: map['sugarScenario'], // Add this line
       suitableSugarMin: map['suitableSugarMin'],
       suitableSugarMax: map['suitableSugarMax'],
       suitableSystolicMin: map['suitableSystolicMin'],

@@ -6,6 +6,9 @@ import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:collection/collection.dart';
 
+import 'package:jagadiri/providers/user_profile_provider.dart';
+import 'package:jagadiri/models/sugar_reference.dart';
+
 class SugarDataScreen extends StatefulWidget {
   const SugarDataScreen({super.key});
 
@@ -128,6 +131,70 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   /* -------------------- CRUD -------------------- */
+  Future<SugarStatus> _getSugarStatus(double value, MealTimeCategory mealTimeCategory, MealType mealType) async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
+    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    final unit = _currentUnit;
+    final sugarScenario = userProfileProvider.userProfile?.sugarScenario;
+
+    // 1. Check for Hypoglycaemia (critical low)
+    final hypoReferences = await db.getSugarReferencesByQuery(
+      unit: unit,
+      scenario: 'Hypoglycaemia',
+    );
+    if (hypoReferences.isNotEmpty && value < hypoReferences.first.maxValue) {
+      return SugarStatus.low;
+    }
+
+    // 2. Check for Severe-Hyper (critical high)
+    final hyperReferences = await db.getSugarReferencesByQuery(
+      unit: unit,
+      scenario: 'Severe-Hyper',
+    );
+    if (hyperReferences.isNotEmpty && value > hyperReferences.first.minValue) {
+      return SugarStatus.high;
+    }
+
+    // 3. If not in critical ranges, check scenario-specific ranges
+    if (sugarScenario != null) {
+      List<SugarReference> references = await db.getSugarReferencesByQuery(
+        unit: unit,
+        scenario: sugarScenario,
+        mealTime: mealTimeCategory.name,
+        mealType: mealType.name,
+      );
+
+      if (references.isEmpty) {
+        references = await db.getSugarReferencesByQuery(
+          unit: unit,
+          scenario: sugarScenario,
+          mealTime: mealTimeCategory.name,
+          mealType: 'ANY',
+        );
+      }
+
+      if (references.isEmpty) {
+        references = await db.getSugarReferencesByQuery(
+          unit: unit,
+          scenario: sugarScenario,
+          mealTime: 'ANY',
+          mealType: 'ANY',
+        );
+      }
+
+      if (references.isNotEmpty) {
+        final SugarReference reference = references.first;
+        if (value < reference.minValue) {
+          return SugarStatus.low;
+        } else if (value > reference.maxValue) {
+          return SugarStatus.high;
+        }
+      }
+    }
+
+    return SugarStatus.good;
+  }
+
   Future<void> _saveRecord(MealTimeCategory? cat, MealType? type,
       [SugarRecord? editing]) async {
     if (_dateController.text.isEmpty ||
@@ -145,7 +212,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final time = TimeOfDay.fromDateTime(
         DateFormat('hh:mm a').parse(_timeController.text));
     final value = double.tryParse(_sugarValueController.text) ?? 0.0;
-    final status = SugarRecord.calculateSugarStatus(cat, value);
+    final status = await _getSugarStatus(value, cat, type);
 
     final record = SugarRecord(
       id: editing?.id,
@@ -467,11 +534,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             Icon(
               latest.status == SugarStatus.good
                   ? Icons.thumb_up
-                  : latest.status == SugarStatus.normal
-                  ? Icons.thumb_up_alt_outlined
+                  : latest.status == SugarStatus.low
+                  ? Icons.thumb_down
                   : Icons.thumb_down,
               color:
-              latest.status == SugarStatus.bad ? Colors.red : Colors.green,
+              latest.status == SugarStatus.good ? Colors.green : Colors.red,
               size: 28,
             ),
             const SizedBox(height: 8),
@@ -573,12 +640,12 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () {
-                      _searchStartDateController.clear();
-                      _searchEndDateController.clear();
-                      setState(() {
-                        _searchMealType = null;
-                      });
-                      _filter();
+                        _searchStartDateController.clear();
+                        _searchEndDateController.clear();
+                        setState(() {
+                          _searchMealType = null;
+                        });
+                        _filter();
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Reset'),
@@ -614,7 +681,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
+                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center), 
                 if (sub.isNotEmpty)
                   Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
               ],
@@ -649,7 +716,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         rows: paginatedDates.map((date) {
           final recordsForDate = groupedByDate[date]!;
           final timesString = recordsForDate.map((r) => r.time.format(context)).join(',\n');
-          final isOverallGood = recordsForDate.every((r) => r.status == SugarStatus.good || r.status == SugarStatus.normal);
           final recordsMap = {for (var r in recordsForDate) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
 
           final List<DataCell> cells = [
@@ -666,8 +732,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           }
 
           cells.addAll([
-            DataCell(Center(child: Tooltip(message: isOverallGood ? 'All readings are good or normal' : 'One or more readings are high or low', child: Icon(isOverallGood ? Icons.check_circle_outline : Icons.highlight_off, color: isOverallGood ? Colors.green : Colors.red)))),
-            DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: recordsForDate.length == 1 ? () => _showFormDialog(editing: recordsForDate.first) : null), IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, recordsForDate))]))),
+            DataCell(Center(child: Tooltip(message: recordsForDate.first.status.name, child: Icon(recordsForDate.first.status == SugarStatus.good ? Icons.check_circle_outline : Icons.highlight_off, color: recordsForDate.first.status == SugarStatus.good ? Colors.green : Colors.red)))),
+            DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: recordsForDate.length == 1 ? () => _showFormDialog(editing: recordsForDate.first) : null), IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, recordsForDate))]))), 
           ]);
 
           return DataRow(cells: cells);
