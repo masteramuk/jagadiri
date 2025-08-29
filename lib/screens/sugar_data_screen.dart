@@ -18,6 +18,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   List<SugarRecord> _filteredSugarRecords = [];
   bool _isLoading = true;
   late String _currentUnit;
+  bool _isLatestCardExpanded = true;
+  bool _isSearchCardExpanded = true;
 
   /* ---- Cached previous record per meal type ---- */
   final Map<MealType, SugarRecord?> _previousByMeal = {};
@@ -206,8 +208,26 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           : Column(
         children: [
           _summaryCards(),
-          _latestCard(),
-          _searchCard(), // Search card is now static
+          _buildExpandableCard(
+            title: 'Latest Record',
+            content: _latestCard(),
+            isExpanded: _isLatestCardExpanded,
+            onToggle: () {
+              setState(() {
+                _isLatestCardExpanded = !_isLatestCardExpanded;
+              });
+            },
+          ),
+          _buildExpandableCard(
+            title: 'Search',
+            content: _searchCard(),
+            isExpanded: _isSearchCardExpanded,
+            onToggle: () {
+              setState(() {
+                _isSearchCardExpanded = !_isSearchCardExpanded;
+              });
+            },
+          ),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -228,6 +248,47 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   /* -------------------- Widget helpers -------------------- */
+  Widget _buildExpandableCard({
+    required String title,
+    required Widget content,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            title: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            trailing: IconButton(
+              icon: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+              onPressed: onToggle,
+            ),
+            onTap: onToggle, // Allow tapping the tile to toggle
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: isExpanded
+                ? Column(
+              children: [
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: content,
+                ),
+              ],
+            )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
   String _formatMealType(String mealType) {
     if (mealType.isEmpty) return '';
     var result = mealType.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
@@ -364,181 +425,162 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       }
     }
 
-    return Card(
-      margin: const EdgeInsets.all(8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-        side: BorderSide(color: Theme.of(context).dividerColor),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date on top
-                  Text(
-                    DateFormat('dd-MMM-yyyy  hh:mm a').format(dt),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  // Meal time & type with capitalised first letters
-                  Text(
-                    '${_formatMealType(latest.mealTimeCategory.name)}  '
-                        '${_formatMealType(latest.mealType.name)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  // Value + unit
-                  Text(
-                    '${latest.value.toStringAsFixed(1)} $unit',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ],
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date on top
+              Text(
+                DateFormat('dd-MMM-yyyy  hh:mm a').format(dt),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
+              const SizedBox(height: 4),
+              // Meal time & type with capitalised first letters
+              Text(
+                '${_formatMealType(latest.mealTimeCategory.name)}  '
+                    '${_formatMealType(latest.mealType.name)}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 4),
+              // Value + unit
+              Text(
+                '${latest.value.toStringAsFixed(1)} $unit',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ],
+          ),
+        ),
+        // Two icons on the right
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              latest.status == SugarStatus.good
+                  ? Icons.thumb_up
+                  : latest.status == SugarStatus.normal
+                  ? Icons.thumb_up_alt_outlined
+                  : Icons.thumb_down,
+              color:
+              latest.status == SugarStatus.bad ? Colors.red : Colors.green,
+              size: 28,
             ),
-            // Two icons on the right
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  latest.status == SugarStatus.good
-                      ? Icons.thumb_up
-                      : latest.status == SugarStatus.normal
-                      ? Icons.thumb_up_alt_outlined
-                      : Icons.thumb_down,
-                  color:
-                  latest.status == SugarStatus.bad ? Colors.red : Colors.green,
-                  size: 28,
-                ),
-                const SizedBox(height: 8),
-                Icon(
-                  trendIcon,
-                  color: trendColor,
-                  size: 24,
-                ),
-              ],
+            const SizedBox(height: 8),
+            Icon(
+              trendIcon,
+              color: trendColor,
+              size: 24,
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
   Widget _searchCard() {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchStartDateController,
-                    readOnly: true,
-                    onTap: () => _pickDate(_searchStartDateController),
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date',
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                  ),
+            Expanded(
+              child: TextField(
+                controller: _searchStartDateController,
+                readOnly: true,
+                onTap: () => _pickDate(_searchStartDateController),
+                decoration: const InputDecoration(
+                  labelText: 'Start Date',
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchEndDateController,
-                    readOnly: true,
-                    onTap: () => _pickDate(_searchEndDateController),
-                    decoration: const InputDecoration(
-                      labelText: 'End Date',
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Use a breakpoint to decide which button style to use
-                bool useIconButtons = constraints.maxWidth < 400;
-
-                return Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<MealType>(
-                        value: _searchMealType,
-                        hint: const Text('All Meal Types'),
-                        items: MealType.values
-                            .map((e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(_formatMealType(e.name)),
-                                ))
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() => _searchMealType = val);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (useIconButtons) ...[
-                      Tooltip(
-                        message: 'Search',
-                        child: ElevatedButton(
-                          onPressed: _filter,
-                          child: const Icon(Icons.search),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message: 'Reset',
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _searchStartDateController.clear();
-                            _searchEndDateController.clear();
-                            setState(() {
-                              _searchMealType = null;
-                            });
-                            _filter();
-                          },
-                          child: const Icon(Icons.refresh),
-                        ),
-                      ),
-                    ] else ...[
-                      ElevatedButton.icon(
-                        onPressed: _filter,
-                        icon: const Icon(Icons.search),
-                        label: const Text('Search'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _searchStartDateController.clear();
-                          _searchEndDateController.clear();
-                          setState(() {
-                            _searchMealType = null;
-                          });
-                          _filter();
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reset'),
-                      ),
-                    ],
-                  ],
-                );
-              },
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _searchEndDateController,
+                readOnly: true,
+                onTap: () => _pickDate(_searchEndDateController),
+                decoration: const InputDecoration(
+                  labelText: 'End Date',
+                  suffixIcon: Icon(Icons.calendar_today),
+                ),
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Use a breakpoint to decide which button style to use
+            bool useIconButtons = constraints.maxWidth < 400;
+
+            return Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<MealType>(
+                    value: _searchMealType,
+                    hint: const Text('All Meal Types'),
+                    items: MealType.values
+                        .map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(_formatMealType(e.name)),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      setState(() => _searchMealType = val);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (useIconButtons) ...[
+                  Tooltip(
+                    message: 'Search',
+                    child: ElevatedButton(
+                      onPressed: _filter,
+                      child: const Icon(Icons.search),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Reset',
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _searchStartDateController.clear();
+                        _searchEndDateController.clear();
+                        setState(() {
+                          _searchMealType = null;
+                        });
+                        _filter();
+                      },
+                      child: const Icon(Icons.refresh),
+                    ),
+                  ),
+                ] else ...[
+                  ElevatedButton.icon(
+                    onPressed: _filter,
+                    icon: const Icon(Icons.search),
+                    label: const Text('Search'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _searchStartDateController.clear();
+                      _searchEndDateController.clear();
+                      setState(() {
+                        _searchMealType = null;
+                      });
+                      _filter();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reset'),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
