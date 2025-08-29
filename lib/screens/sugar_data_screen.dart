@@ -202,10 +202,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               child: Column(
                 children: [
                   _searchCard(),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: _recordsTable(),
-                  ),
+                  _recordsTable(),
                 ],
               ),
             ),
@@ -563,6 +560,28 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   Widget _recordsTable() {
+    final theme = Theme.of(context);
+
+    // Helper to build styled header columns
+    DataColumn _buildStyledHeader(String main, {String sub = ''}) {
+      return DataColumn(
+        label: Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center), 
+                if (sub.isNotEmpty)
+                  Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     // Group records by date, ignoring the time part.
     final groupedByDate = groupBy(
       _filteredSugarRecords,
@@ -586,7 +605,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       );
     }
 
-    // Define the meal types and time categories to create columns.
+    // Define the meal types to create columns.
     final mealTypes = MealType.values;
 
     // Helper to format enum names like 'midMorningSnack' into 'Mid Morning Snack'.
@@ -598,35 +617,19 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     // Build the list of columns for the DataTable.
     final List<DataColumn> columns = [
-      const DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-      const DataColumn(label: Text('Time', style: TextStyle(fontWeight: FontWeight.bold))),
+      _buildStyledHeader('Date'),
+      _buildStyledHeader('Time'),
     ];
 
     // Dynamically create columns for each meal type with merged headers.
     for (var type in mealTypes) {
-      columns.add(DataColumn(
-        label: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(formatHeader(type.name), style: const TextStyle(fontWeight: FontWeight.bold)),
-            const Text('Before', style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal)),
-          ],
-        ),
-      ));
-      columns.add(DataColumn(
-        label: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('', style: TextStyle(fontWeight: FontWeight.bold)), // Empty top header
-            const Text('After', style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal)),
-          ],
-        ),
-      ));
+      columns.add(_buildStyledHeader(formatHeader(type.name), sub: 'Before'));
+      columns.add(_buildStyledHeader('', sub: 'After')); // Empty top header for merged effect
     }
 
     columns.addAll([
-      const DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-      const DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+      _buildStyledHeader('Status'),
+      _buildStyledHeader('Actions'),
     ]);
 
     // Build the list of rows from the paginated dates.
@@ -645,8 +648,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       final bool isOverallGood = recordsForDate.every((r) => r.status == SugarStatus.good || r.status == SugarStatus.normal);
 
       final List<DataCell> cells = [
-        DataCell(Text(DateFormat('dd-MMM-yy').format(date))),
-        DataCell(Text(timesString)),
+        DataCell(Center(child: Text(DateFormat('dd-MMM-yy').format(date)))),
+        DataCell(Center(child: Text(timesString))),
       ];
 
       // Dynamically create a cell for each meal combination.
@@ -675,51 +678,53 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         ),
         // Actions cell with edit and delete buttons.
         DataCell(
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit),
-                iconSize: 20,
-                tooltip: 'Edit Record',
-                onPressed: recordsForDate.length == 1
-                    ? () => _showFormDialog(editing: recordsForDate.first)
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete),
-                iconSize: 20,
-                tooltip: 'Delete all records for this date',
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Confirm Deletion'),
-                        content: Text('Are you sure you want to delete all ${recordsForDate.length} record(s) for ${DateFormat.yMd().format(date)}?'),
-                        actions: <Widget>[
-                          TextButton(
-                            child: const Text('Cancel'),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                          TextButton(
-                            child: const Text('Delete'),
-                            onPressed: () {
-                              Navigator.of(context).pop(); // Close dialog first.
-                              for (var record in recordsForDate) {
-                                if (record.id != null) {
-                                  _deleteRecord(record.id!);
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  iconSize: 20,
+                  tooltip: 'Edit Record',
+                  onPressed: recordsForDate.length == 1
+                      ? () => _showFormDialog(editing: recordsForDate.first)
+                      : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  iconSize: 20,
+                  tooltip: 'Delete all records for this date',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Deletion'),
+                          content: Text('Are you sure you want to delete all ${recordsForDate.length} record(s) for ${DateFormat.yMd().format(date)}?'),
+                          actions: <Widget>[
+                            TextButton(
+                              child: const Text('Cancel'),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            TextButton(
+                              child: const Text('Delete'),
+                              onPressed: () {
+                                Navigator.of(context).pop(); // Close dialog first.
+                                for (var record in recordsForDate) {
+                                  if (record.id != null) {
+                                    _deleteRecord(record.id!);
+                                  }
                                 }
-                              }
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ]);
@@ -732,13 +737,17 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
+            headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
+            border: TableBorder.all(
+              color: theme.dividerColor,
+              width: 1,
+            ),
             columnSpacing: 12,
             horizontalMargin: 8,
             columns: columns,
             rows: rows,
           ),
         ),
-        // Show pagination controls if there are more records than rows per page.
         if (sortedDates.length > _rowsPerPage)
           _pagination(sortedDates.length),
       ],
