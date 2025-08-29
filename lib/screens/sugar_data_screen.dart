@@ -189,6 +189,16 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   /* -------------------- UI -------------------- */
   @override
   Widget build(BuildContext context) {
+    // Group records by date to calculate total rows for pagination
+    final groupedByDate = groupBy(
+      _filteredSugarRecords,
+      (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day),
+    );
+    final sortedDates = groupedByDate.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    print('PAGINATION_DEBUG: totalRows = ${sortedDates.length}, rowsPerPage = $_rowsPerPage');
+
     return Scaffold(
       appBar: AppBar(title: const Text('Sugar Level Tracker')),
       body: _isLoading
@@ -202,11 +212,18 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               child: Column(
                 children: [
                   _searchCard(),
-                  _recordsTable(),
+                  // The records table is horizontally scrollable
+                  SingleChildScrollView(
+                    scrollDirection: Axis. horizontal,
+                    child: _recordsTable(groupedByDate, sortedDates),
+                  ),
                 ],
               ),
             ),
           ),
+          // Pagination is outside the horizontal scroll
+          if (sortedDates.length > _rowsPerPage)
+            _pagination(sortedDates.length),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -559,7 +576,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     return groupBy(_filteredSugarRecords, (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day));
   }
 
-  Widget _recordsTable() {
+  Widget _recordsTable(Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
     final theme = Theme.of(context);
 
     // Helper to build styled header columns
@@ -581,16 +598,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         ),
       );
     }
-
-    // Group records by date, ignoring the time part.
-    final groupedByDate = groupBy(
-      _filteredSugarRecords,
-      (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day),
-    );
-
-    // Sort dates from newest to oldest.
-    final sortedDates = groupedByDate.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
 
     // Apply pagination to the sorted dates.
     final paginatedDates = sortedDates
@@ -732,25 +739,16 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       return DataRow(cells: cells);
     }).toList();
 
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
-            border: TableBorder.all(
-              color: theme.dividerColor,
-              width: 1,
-            ),
-            columnSpacing: 12,
-            horizontalMargin: 8,
-            columns: columns,
-            rows: rows,
-          ),
-        ),
-        if (sortedDates.length > _rowsPerPage)
-          _pagination(sortedDates.length),
-      ],
+    return DataTable(
+      headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
+      border: TableBorder.all(
+        color: theme.dividerColor,
+        width: 1,
+      ),
+      columnSpacing: 12,
+      horizontalMargin: 8,
+      columns: columns,
+      rows: rows,
     );
   }
 
