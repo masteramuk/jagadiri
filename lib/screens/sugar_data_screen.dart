@@ -588,7 +588,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     // Define the meal types and time categories to create columns.
     final mealTypes = MealType.values;
-    final mealTimeCategories = MealTimeCategory.values;
 
     // Helper to format enum names like 'midMorningSnack' into 'Mid Morning Snack'.
     String formatHeader(String name) {
@@ -601,23 +600,34 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final List<DataColumn> columns = [
       const DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
       const DataColumn(label: Text('Time', style: TextStyle(fontWeight: FontWeight.bold))),
-      // Dynamically create a column for each combination of MealType and MealTimeCategory.
-      ...mealTypes.expand((type) {
-        return mealTimeCategories.map((category) {
-          return DataColumn(
-            label: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(formatHeader(type.name), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                Text(formatHeader(category.name), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ],
-            ),
-          );
-        });
-      }),
-      const DataColumn(label: Text('', style: TextStyle(fontWeight: FontWeight.bold))), // Status icon
-      const DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))), // Actions
     ];
+
+    // Dynamically create columns for each meal type with merged headers.
+    for (var type in mealTypes) {
+      columns.add(DataColumn(
+        label: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(formatHeader(type.name), style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Before', style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal)),
+          ],
+        ),
+      ));
+      columns.add(DataColumn(
+        label: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('', style: TextStyle(fontWeight: FontWeight.bold)), // Empty top header
+            const Text('After', style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal)),
+          ],
+        ),
+      ));
+    }
+
+    columns.addAll([
+      const DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+      const DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+    ]);
 
     // Build the list of rows from the paginated dates.
     final List<DataRow> rows = paginatedDates.map((date) {
@@ -634,93 +644,99 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       // Determine the overall status for the day.
       final bool isOverallGood = recordsForDate.every((r) => r.status == SugarStatus.good || r.status == SugarStatus.normal);
 
-      return DataRow(
-        cells: [
-          DataCell(Text(DateFormat('dd-MMM-yy').format(date))),
-          DataCell(Text(timesString)),
-          // Dynamically create a cell for each meal combination.
-          ...mealTypes.expand((type) {
-            return mealTimeCategories.map((category) {
-              final key = '${type.name}_${category.name}';
-              final record = recordsMap[key];
-              return DataCell(
-                Center(child: Text(record?.value.toStringAsFixed(1) ?? '')),
-              );
-            });
-          }),
-          // Status icon cell.
-          DataCell(
-            Center(
-              child: Tooltip(
-                message: isOverallGood ? 'All readings are good or normal' : 'One or more readings are high or low',
-                child: Icon(
-                  isOverallGood ? Icons.check_circle_outline : Icons.highlight_off,
-                  color: isOverallGood ? Colors.green : Colors.red,
-                ),
+      final List<DataCell> cells = [
+        DataCell(Text(DateFormat('dd-MMM-yy').format(date))),
+        DataCell(Text(timesString)),
+      ];
+
+      // Dynamically create a cell for each meal combination.
+      for (var type in mealTypes) {
+        for (var category in MealTimeCategory.values) {
+          final key = '${type.name}_${category.name}';
+          final record = recordsMap[key];
+          cells.add(DataCell(
+            Center(child: Text(record?.value.toStringAsFixed(1) ?? '')),
+          ));
+        }
+      }
+
+      cells.addAll([
+        // Status icon cell.
+        DataCell(
+          Center(
+            child: Tooltip(
+              message: isOverallGood ? 'All readings are good or normal' : 'One or more readings are high or low',
+              child: Icon(
+                isOverallGood ? Icons.check_circle_outline : Icons.highlight_off,
+                color: isOverallGood ? Colors.green : Colors.red,
               ),
             ),
           ),
-          // Actions cell with edit and delete buttons.
-          DataCell(
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  iconSize: 20,
-                  tooltip: 'Edit Record',
-                  // Editing is complex for a group, so only enable it for single-record days.
-                  onPressed: recordsForDate.length == 1
-                      ? () => _showFormDialog(editing: recordsForDate.first)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  iconSize: 20,
-                  tooltip: 'Delete all records for this date',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Confirm Deletion'),
-                          content: Text('Are you sure you want to delete all ${recordsForDate.length} record(s) for ${DateFormat.yMd().format(date)}?'),
-                          actions: <Widget>[
-                            TextButton(
-                              child: const Text('Cancel'),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            TextButton(
-                              child: const Text('Delete'),
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close dialog first.
-                                for (var record in recordsForDate) {
-                                  if (record.id != null) {
-                                    _deleteRecord(record.id!);
-                                  }
+        ),
+        // Actions cell with edit and delete buttons.
+        DataCell(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit),
+                iconSize: 20,
+                tooltip: 'Edit Record',
+                onPressed: recordsForDate.length == 1
+                    ? () => _showFormDialog(editing: recordsForDate.first)
+                    : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete),
+                iconSize: 20,
+                tooltip: 'Delete all records for this date',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Confirm Deletion'),
+                        content: Text('Are you sure you want to delete all ${recordsForDate.length} record(s) for ${DateFormat.yMd().format(date)}?'),
+                        actions: <Widget>[
+                          TextButton(
+                            child: const Text('Cancel'),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          TextButton(
+                            child: const Text('Delete'),
+                            onPressed: () {
+                              Navigator.of(context).pop(); // Close dialog first.
+                              for (var record in recordsForDate) {
+                                if (record.id != null) {
+                                  _deleteRecord(record.id!);
                                 }
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
+                              }
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      );
+        ),
+      ]);
+
+      return DataRow(cells: cells);
     }).toList();
 
     return Column(
       children: [
-        DataTable(
-          columnSpacing: 12,
-          horizontalMargin: 8,
-          columns: columns,
-          rows: rows,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columnSpacing: 12,
+            horizontalMargin: 8,
+            columns: columns,
+            rows: rows,
+          ),
         ),
         // Show pagination controls if there are more records than rows per page.
         if (sortedDates.length > _rowsPerPage)
