@@ -29,8 +29,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
   /* -------------------- Pagination -------------------- */
   int _currentPage = 0;
-  int _rowsPerPage = 10;
-  final List<int> _rowsPerPageOptions = [10, 20, 50, 100];
+  int _rowsPerPage = 5;
+  final List<int> _rowsPerPageOptions = [5, 10, 20, 50, 100];
 
   /* -------------------- Form -------------------- */
   final _dateController = TextEditingController();
@@ -189,6 +189,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   /* -------------------- UI -------------------- */
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     // Group records by date to calculate total rows for pagination
     final groupedByDate = groupBy(
       _filteredSugarRecords,
@@ -196,8 +198,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
     final sortedDates = groupedByDate.keys.toList()
       ..sort((a, b) => b.compareTo(a));
-
-    print('PAGINATION_DEBUG: totalRows = ${sortedDates.length}, rowsPerPage = $_rowsPerPage');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sugar Level Tracker')),
@@ -207,23 +207,17 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         children: [
           _summaryCards(),
           _latestCard(),
+          _searchCard(), // Search card is now static
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _searchCard(),
-                  // The records table is horizontally scrollable
-                  SingleChildScrollView(
-                    scrollDirection: Axis. horizontal,
-                    child: _recordsTable(groupedByDate, sortedDates),
-                  ),
+                  _recordsTable(theme, groupedByDate, sortedDates),
+                  _pagination(sortedDates.length), // Pagination is always visible
                 ],
               ),
             ),
           ),
-          // Pagination is outside the horizontal scroll
-          if (sortedDates.length > _rowsPerPage)
-            _pagination(sortedDates.length),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -548,58 +542,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
-  DataColumn _buildMealColumn(String header1, String header2) {
-    return DataColumn(
-      label: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(header1, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(header2, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  DataColumn _buildMergedHeader(String text) {
-    return DataColumn(
-      label: Center(
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Map<DateTime, List<SugarRecord>> _groupRecordsByDate() {
-    return groupBy(_filteredSugarRecords, (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day));
-  }
-
-  Widget _recordsTable(Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
-    final theme = Theme.of(context);
-
-    // Helper to build styled header columns
-    DataColumn _buildStyledHeader(String main, {String sub = ''}) {
-      return DataColumn(
-        label: Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center), 
-                if (sub.isNotEmpty)
-                  Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Apply pagination to the sorted dates.
+  Widget _recordsTable(ThemeData theme, Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
     final paginatedDates = sortedDates
         .skip(_currentPage * _rowsPerPage)
         .take(_rowsPerPage)
@@ -612,143 +555,98 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       );
     }
 
-    // Define the meal types to create columns.
-    final mealTypes = MealType.values;
+    DataColumn _buildStyledHeader(String main, {String sub = ''}) {
+      return DataColumn(
+        label: Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
+                if (sub.isNotEmpty)
+                  Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-    // Helper to format enum names like 'midMorningSnack' into 'Mid Morning Snack'.
     String formatHeader(String name) {
       if (name.isEmpty) return '';
       var result = name.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
       return result[0].toUpperCase() + result.substring(1);
     }
 
-    // Build the list of columns for the DataTable.
     final List<DataColumn> columns = [
       _buildStyledHeader('Date'),
       _buildStyledHeader('Time'),
     ];
-
-    // Dynamically create columns for each meal type with merged headers.
-    for (var type in mealTypes) {
+    for (var type in MealType.values) {
       columns.add(_buildStyledHeader(formatHeader(type.name), sub: 'Before'));
-      columns.add(_buildStyledHeader('', sub: 'After')); // Empty top header for merged effect
+      columns.add(_buildStyledHeader('', sub: 'After'));
     }
+    columns.addAll([_buildStyledHeader('Status'), _buildStyledHeader('Actions')]);
 
-    columns.addAll([
-      _buildStyledHeader('Status'),
-      _buildStyledHeader('Actions'),
-    ]);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
+        border: TableBorder.all(color: theme.dividerColor, width: 1),
+        columns: columns,
+        rows: paginatedDates.map((date) {
+          final recordsForDate = groupedByDate[date]!;
+          final timesString = recordsForDate.map((r) => r.time.format(context)).join(',\n');
+          final isOverallGood = recordsForDate.every((r) => r.status == SugarStatus.good || r.status == SugarStatus.normal);
+          final recordsMap = {for (var r in recordsForDate) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
 
-    // Build the list of rows from the paginated dates.
-    final List<DataRow> rows = paginatedDates.map((date) {
-      final recordsForDate = groupedByDate[date]!;
-      
-      // For efficient lookup, create a map of records for the current date.
-      final recordsMap = {
-        for (var r in recordsForDate) '${r.mealType.name}_${r.mealTimeCategory.name}': r
-      };
+          final List<DataCell> cells = [
+            DataCell(Center(child: Text(DateFormat('dd-MMM-yy').format(date)))),
+            DataCell(Center(child: Text(timesString))),
+          ];
 
-      // Concatenate times if multiple records exist for the same day.
-      final timesString = recordsForDate.map((r) => r.time.format(context)).join(',\n');
+          for (var type in MealType.values) {
+            for (var category in MealTimeCategory.values) {
+              final key = '${type.name}_${category.name}';
+              final record = recordsMap[key];
+              cells.add(DataCell(Center(child: Text(record?.value.toStringAsFixed(1) ?? ''))));
+            }
+          }
 
-      // Determine the overall status for the day.
-      final bool isOverallGood = recordsForDate.every((r) => r.status == SugarStatus.good || r.status == SugarStatus.normal);
+          cells.addAll([
+            DataCell(Center(child: Tooltip(message: isOverallGood ? 'All readings are good or normal' : 'One or more readings are high or low', child: Icon(isOverallGood ? Icons.check_circle_outline : Icons.highlight_off, color: isOverallGood ? Colors.green : Colors.red)))),
+            DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: recordsForDate.length == 1 ? () => _showFormDialog(editing: recordsForDate.first) : null), IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, recordsForDate))]))),
+          ]);
 
-      final List<DataCell> cells = [
-        DataCell(Center(child: Text(DateFormat('dd-MMM-yy').format(date)))),
-        DataCell(Center(child: Text(timesString))),
-      ];
-
-      // Dynamically create a cell for each meal combination.
-      for (var type in mealTypes) {
-        for (var category in MealTimeCategory.values) {
-          final key = '${type.name}_${category.name}';
-          final record = recordsMap[key];
-          cells.add(DataCell(
-            Center(child: Text(record?.value.toStringAsFixed(1) ?? '')),
-          ));
-        }
-      }
-
-      cells.addAll([
-        // Status icon cell.
-        DataCell(
-          Center(
-            child: Tooltip(
-              message: isOverallGood ? 'All readings are good or normal' : 'One or more readings are high or low',
-              child: Icon(
-                isOverallGood ? Icons.check_circle_outline : Icons.highlight_off,
-                color: isOverallGood ? Colors.green : Colors.red,
-              ),
-            ),
-          ),
-        ),
-        // Actions cell with edit and delete buttons.
-        DataCell(
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  iconSize: 20,
-                  tooltip: 'Edit Record',
-                  onPressed: recordsForDate.length == 1
-                      ? () => _showFormDialog(editing: recordsForDate.first)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  iconSize: 20,
-                  tooltip: 'Delete all records for this date',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Confirm Deletion'),
-                          content: Text('Are you sure you want to delete all ${recordsForDate.length} record(s) for ${DateFormat.yMd().format(date)}?'),
-                          actions: <Widget>[
-                            TextButton(
-                              child: const Text('Cancel'),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            TextButton(
-                              child: const Text('Delete'),
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close dialog first.
-                                for (var record in recordsForDate) {
-                                  if (record.id != null) {
-                                    _deleteRecord(record.id!);
-                                  }
-                                }
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ]);
-
-      return DataRow(cells: cells);
-    }).toList();
-
-    return DataTable(
-      headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
-      border: TableBorder.all(
-        color: theme.dividerColor,
-        width: 1,
+          return DataRow(cells: cells);
+        }).toList(),
       ),
-      columnSpacing: 12,
-      horizontalMargin: 8,
-      columns: columns,
-      rows: rows,
+    );
+  }
+
+  void _showDeleteConfirmation(DateTime date, List<SugarRecord> records) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete all ${records.length} record(s) for ${DateFormat.yMd().format(date)}?'),
+          actions: <Widget>[
+            TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(context).pop()),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                for (var record in records) {
+                  if (record.id != null) _deleteRecord(record.id!);
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
