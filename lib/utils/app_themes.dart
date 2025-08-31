@@ -109,7 +109,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.blue,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.blue.shade200,
+              unselectedItemColor: Colors.blue.shade100,
             ),
           );
 
@@ -131,7 +131,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.blueGrey.shade900,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.blueGrey.shade400,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -151,7 +151,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.cyan.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.cyan.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -171,7 +171,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.green.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.green.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -191,7 +191,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.orange.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.orange.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -210,8 +210,8 @@ class AppThemes {
             buttonTheme: _elevatedButtonTheme(Colors.limeAccent),
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.lightGreen.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.lightGreen.shade200,
+              selectedItemColor: Colors.black,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -231,7 +231,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.purple.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.purple.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -251,7 +251,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.pink.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.pink.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 
@@ -307,7 +307,7 @@ class AppThemes {
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.pink.shade800,
               selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.pink.shade200,
+              unselectedItemColor: Colors.white60,
             ),
           );
 

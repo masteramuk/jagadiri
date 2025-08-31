@@ -83,6 +83,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   String _selectedMeasurementUnit = 'Metric';
   String? _selectedGender;
   String? _selectedExerciseFrequency;
+  String? _selectedSugarScenario;
 
   @override
   void initState() {
@@ -119,10 +120,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _dobController.text = DateFormat('dd-MM-yyyy').format(_userProfile!.dob);
       _heightController.text = _userProfile!.height.toStringAsFixed(1);
       _weightController.text = _userProfile!.weight.toStringAsFixed(1);
-      _targetWeightController.text =
-          _userProfile!.targetWeight.toStringAsFixed(1);
+      _targetWeightController =
+          TextEditingController(text: _userProfile!.targetWeight.toStringAsFixed(1));
       _selectedGender = _userProfile!.gender;
       _selectedExerciseFrequency = _userProfile!.exerciseFrequency;
+      _selectedSugarScenario = _userProfile!.sugarScenario;
     }
     setState(() {});
   }// End of _loadSettings method
@@ -191,10 +193,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       baseAdvice +=
       'You are currently above your target weight. Focus on gradual weight loss.\n\n';
     } else if (profile.weight < profile.targetWeight) {
-      baseAdvice += 
+      baseAdvice +=
       'You are currently below your target weight. Ensure healthy weight gain if that is your goal.\n\n';
     } else {
-      baseAdvice += 
+      baseAdvice +=
       'You are at your target weight. Great job! Maintain your healthy habits.\n\n';
     }
 
@@ -324,6 +326,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         measurementUnit: _selectedMeasurementUnit,
         gender: _selectedGender,
         exerciseFrequency: _selectedExerciseFrequency,
+        sugarScenario: _selectedSugarScenario,
       );
 
       final age = _getAge(newProfile.dob);
@@ -416,7 +419,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                         .headlineSmall
                                         ?.copyWith(fontWeight: FontWeight.bold),
                                     ),// End of Text
-                                  ], //end of children of Row
+                                  ],
                               ), // End of Row
                               const Divider(),
                               ListTile(
@@ -424,7 +427,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 trailing: DropdownButton<String>(
                                   value: _selectedThemeName,
                                   onChanged: (String? newValue) {
-                                    setState(() => _selectedThemeName = newValue!);
+                                    setState(() => _selectedThemeName = newValue!)
+                                    ;
                                   },
                                   items: AppThemes.themes.keys.map((String value) {
                                     return DropdownMenuItem(
@@ -437,7 +441,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 trailing: DropdownButton<String>(
                                   value: _selectedMeasurementUnit,
                                   onChanged: (String? newValue) {
-                                    setState(() => _selectedMeasurementUnit = newValue!);
+                                    setState(() => _selectedMeasurementUnit = newValue!)
+                                    ;
                                   },
                                   items: ['Metric', 'US'].map((String value) {
                                     return DropdownMenuItem(
@@ -636,6 +641,33 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                         : null,
                                     trailing: const Icon(Icons.arrow_drop_down),
                                     onTap: () => _showExerciseFrequencyDialog(),
+                                  ),
+                                  const SizedBox(height: 16.0),
+                                  const Text('Diabetic Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedSugarScenario,
+                                    items: [
+                                      'Non-Diabetic',
+                                      'Prediabetes',
+                                      'Diabetes-ADA',
+                                      'Type 1 Diabetes',
+                                      'Type 2 Diabetes',
+                                      'Severe Hyper-glycaemia',
+                                      'Hypoglycaemia'
+                                    ].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        _selectedSugarScenario = newValue;
+                                      });
+                                    },
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                    ),
                                   ),
                                   const SizedBox(height: 24.0),
                                   ElevatedButton.icon(
