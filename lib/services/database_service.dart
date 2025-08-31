@@ -1,16 +1,10 @@
-
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:jagadiri/models/sugar_record.dart';
-import 'package:jagadiri/models/bp_record.dart';
-import 'package:jagadiri/models/user_profile.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/models/bp_record.dart';
+import 'package:jagadiri/models/sugar_record.dart';
+import 'package:jagadiri/models/sugar_reference.dart';
 import 'package:jagadiri/models/user_profile.dart';
-import 'package:jagadiri/models/sugar_ref_model.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class DatabaseService {
@@ -21,7 +15,7 @@ class DatabaseService {
   DatabaseService._internal();
 
   // Define the database version
-  static const int _dbVersion = 8;
+  static const int _dbVersion = 9;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -32,11 +26,12 @@ class DatabaseService {
   Future<Database> _initDatabase() async {
     if (kIsWeb) {
       final factory = databaseFactoryFfiWeb;
-      return factory.openDatabase('jagadiri.db', options: OpenDatabaseOptions(
-        version: _dbVersion,
-        onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
-      ));
+      return factory.openDatabase('jagadiri.db',
+          options: OpenDatabaseOptions(
+            version: _dbVersion,
+            onCreate: _onCreate,
+            onUpgrade: _onUpgrade,
+          ));
     } else {
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, 'jagadiri.db');
@@ -57,7 +52,6 @@ class DatabaseService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     debugPrint('Upgrading database from version $oldVersion to $newVersion');
-    // Use a migration script approach for clarity and robustness
     for (int i = oldVersion + 1; i <= newVersion; i++) {
       await _runMigration(db, i);
     }
@@ -86,6 +80,11 @@ class DatabaseService {
         await _addColumns(db, 'user_profile', _userProfileSchemaV7Adds);
         break;
       case 8:
+        // This version was for the old sugar_reference table, now superseded by v9
+        break;
+      case 9:
+        await db.execute('DROP TABLE IF EXISTS sugar_reference');
+        await db.execute('DROP TABLE IF EXISTS sugar_references'); // Also drop the plural one if it exists
         await _createTable(db, 'sugar_reference', _sugarReferenceSchema);
         await seedSugarReference(db);
         break;
@@ -95,7 +94,6 @@ class DatabaseService {
     }
   }
 
-  // Centralized table creation
   Future<void> _createAllTables(Database db) async {
     await _createTable(db, 'sugar_records', _sugarRecordsSchema);
     await _createTable(db, 'bp_records', _bpRecordsSchema);
@@ -133,12 +131,13 @@ class DatabaseService {
   ''';
 
   static const String _sugarReferenceSchema = '''
-    id INTEGER PRIMARY KEY,
-    scenario TEXT NOT NULL CHECK(scenario IN ('non-diabetic','prediabetes','diabetes-ada','severe-hyper','hypoglycaemia')),
-    unit TEXT NOT NULL CHECK(unit IN ('mmol/L','mg/dL')),
-    meal_time TEXT NOT NULL CHECK(meal_time IN ('fasting','non-fasting','any')),
-    min_value REAL,
-    max_value REAL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scenario TEXT NOT NULL,
+    meal_time TEXT NOT NULL,
+    min_mmolL REAL NOT NULL,
+    max_mmolL REAL NOT NULL,
+    min_mgdL REAL NOT NULL,
+    max_mgdL REAL NOT NULL
   ''';
 
   static const String _sugarReferenceSchemaV7 = '''
@@ -152,7 +151,6 @@ class DatabaseService {
     created_at INTEGER
   ''';
 
-  // Full User Profile Schema (latest version)
   static const String _userProfileSchema = '''
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -175,7 +173,6 @@ class DatabaseService {
     dailyCalorieTarget REAL
   ''';
 
-  // Schemas for migration steps
   static const String _userProfileSchemaV4 = '''
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -207,9 +204,6 @@ class DatabaseService {
     'sugarScenario': 'TEXT',
   };
 
-
-  // === Helper Methods for Schema Modification ===
-
   Future<void> _createTable(Database db, String tableName, String columns) async {
     try {
       await db.execute('CREATE TABLE IF NOT EXISTS $tableName($columns)');
@@ -219,14 +213,18 @@ class DatabaseService {
     }
   }
 
-  Future<void> _addColumns(Database db, String tableName, Map<String, String> columns) async {
-    final List<Map<String, dynamic>> tableInfo = await db.rawQuery('PRAGMA table_info($tableName)');
-    final Set<String> existingColumns = tableInfo.map((col) => col['name'] as String).toSet();
+  Future<void> _addColumns(
+      Database db, String tableName, Map<String, String> columns) async {
+    final List<Map<String, dynamic>> tableInfo =
+        await db.rawQuery('PRAGMA table_info($tableName)');
+    final Set<String> existingColumns =
+        tableInfo.map((col) => col['name'] as String).toSet();
 
     for (final entry in columns.entries) {
       if (!existingColumns.contains(entry.key)) {
         try {
-          await db.execute('ALTER TABLE $tableName ADD COLUMN ${entry.key} ${entry.value}');
+          await db
+              .execute('ALTER TABLE $tableName ADD COLUMN ${entry.key} ${entry.value}');
           debugPrint('Added column ${entry.key} to $tableName.');
         } catch (e) {
           debugPrint('Error adding column ${entry.key} to $tableName: $e');
@@ -238,18 +236,21 @@ class DatabaseService {
   // === Sugar Record Operations ===
   Future<int> insertSugarRecord(SugarRecord record) async {
     final db = await database;
-    return await db.insert('sugar_records', record.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('sugar_records', record.toDbMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<SugarRecord>> getSugarRecords() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('sugar_records', orderBy: 'date DESC, time DESC');
+    final List<Map<String, dynamic>> maps =
+        await db.query('sugar_records', orderBy: 'date DESC, time DESC');
     return maps.map((e) => SugarRecord.fromDbMap(e)).toList();
   }
 
   Future<int> updateSugarRecord(SugarRecord record) async {
     final db = await database;
-    return await db.update('sugar_records', record.toDbMap(), where: 'id = ?', whereArgs: [record.id]);
+    return await db.update('sugar_records', record.toDbMap(),
+        where: 'id = ?', whereArgs: [record.id]);
   }
 
   Future<int> deleteSugarRecord(int id) async {
@@ -260,19 +261,22 @@ class DatabaseService {
   // === BP Record Operations ===
   Future<int> insertBPRecord(BPRecord record) async {
     final db = await database;
-    return await db.insert('bp_records', record.toDbMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('bp_records', record.toDbMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<BPRecord>> getBPRecords() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('bp_records', orderBy: 'date DESC, time DESC');
+    final List<Map<String, dynamic>> maps =
+        await db.query('bp_records', orderBy: 'date DESC, time DESC');
     return maps.map((e) => BPRecord.fromDbMap(e)).toList();
   }
 
   // === User Profile Operations ===
   Future<int> insertUserProfile(UserProfile profile) async {
     final db = await database;
-    return await db.insert('user_profile', profile.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('user_profile', profile.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<UserProfile?> getUserProfile() async {
@@ -286,18 +290,21 @@ class DatabaseService {
 
   Future<int> updateUserProfile(UserProfile profile) async {
     final db = await database;
-    return await db.update('user_profile', profile.toMap(), where: 'id = ?', whereArgs: [profile.id]);
+    return await db.update('user_profile', profile.toMap(),
+        where: 'id = ?', whereArgs: [profile.id]);
   }
 
   // === Settings Operations ===
   Future<void> insertSetting(String key, String value) async {
     final db = await database;
-    await db.insert('settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('settings', {'key': key, 'value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<String?> getSetting(String key) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('settings', where: 'key = ?', whereArgs: [key]);
+    final List<Map<String, dynamic>> maps =
+        await db.query('settings', where: 'key = ?', whereArgs: [key]);
     if (maps.isNotEmpty) {
       return maps.first['value'] as String?;
     }
@@ -306,60 +313,81 @@ class DatabaseService {
 
   // === Sugar Reference Operations ===
   Future<void> seedSugarReference(Database db) async {
-    final rows = [
-      {'id': 1, 'scenario': 'non-diabetic', 'unit': 'mmol/L', 'meal_time': 'fasting', 'min_value': 3.9, 'max_value': 5.5},
-      {'id': 2, 'scenario': 'non-diabetic', 'unit': 'mmol/L', 'meal_time': 'non-fasting', 'min_value': 3.9, 'max_value': 7.8},
-      {'id': 3, 'scenario': 'prediabetes', 'unit': 'mmol/L', 'meal_time': 'fasting', 'min_value': 5.6, 'max_value': 6.9},
-      {'id': 4, 'scenario': 'prediabetes', 'unit': 'mmol/L', 'meal_time': 'non-fasting', 'min_value': 7.9, 'max_value': 11.0},
-      {'id': 5, 'scenario': 'diabetes-ada', 'unit': 'mmol/L', 'meal_time': 'fasting', 'min_value': 4.4, 'max_value': 7.2},
-      {'id': 6, 'scenario': 'diabetes-ada', 'unit': 'mmol/L', 'meal_time': 'non-fasting', 'min_value': 4.4, 'max_value': 10.0},
-      {'id': 7, 'scenario': 'severe-hyper', 'unit': 'mmol/L', 'meal_time': 'any', 'min_value': 13.0, 'max_value': null},
-      {'id': 8, 'scenario': 'hypoglycaemia', 'unit': 'mmol/L', 'meal_time': 'any', 'min_value': null, 'max_value': 3.9},
-      {'id': 9, 'scenario': 'non-diabetic', 'unit': 'mg/dL', 'meal_time': 'fasting', 'min_value': 70, 'max_value': 100},
-      {'id': 10, 'scenario': 'non-diabetic', 'unit': 'mg/dL', 'meal_time': 'non-fasting', 'min_value': 70, 'max_value': 140},
-      {'id': 11, 'scenario': 'prediabetes', 'unit': 'mg/dL', 'meal_time': 'fasting', 'min_value': 101, 'max_value': 125},
-      {'id': 12, 'scenario': 'prediabetes', 'unit': 'mg/dL', 'meal_time': 'non-fasting', 'min_value': 141, 'max_value': 200},
-      {'id': 13, 'scenario': 'diabetes-ada', 'unit': 'mg/dL', 'meal_time': 'fasting', 'min_value': 80, 'max_value': 130},
-      {'id': 14, 'scenario': 'diabetes-ada', 'unit': 'mg/dL', 'meal_time': 'non-fasting', 'min_value': 80, 'max_value': 180},
-      {'id': 15, 'scenario': 'severe-hyper', 'unit': 'mg/dL', 'meal_time': 'any', 'min_value': 250, 'max_value': null},
-      {'id': 16, 'scenario': 'hypoglycaemia', 'unit': 'mg/dL', 'meal_time': 'any', 'min_value': null, 'max_value': 70},
-    ];
-    for (final r in rows) {
-      await db.insert('sugar_reference', r, conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
+    final batch = db.batch();
+    final data = {
+      'Non-Diabetic': {
+        'before': {'mmolL': [3.9, 5.5], 'mgdL': [70, 99]},
+        'after': {'mmolL': [0.0, 7.8], 'mgdL': [0, 140]},
+      },
+      'Prediabetes': {
+        'before': {'mmolL': [5.6, 6.9], 'mgdL': [100, 125]},
+        'after': {'mmolL': [7.8, 11.0], 'mgdL': [140, 199]},
+      },
+      'Diabetes-ADA': {
+        'before': {'mmolL': [4.0, 7.2], 'mgdL': [70, 130]},
+        'after': {'mmolL': [0.0, 10.0], 'mgdL': [0, 180]},
+      },
+      'Type 1 Diabetes': {
+        'before': {'mmolL': [4.0, 7.0], 'mgdL': [70, 130]},
+        'after': {'mmolL': [5.0, 10.0], 'mgdL': [90, 180]},
+      },
+      'Type 2 Diabetes': {
+        'before': {'mmolL': [4.0, 7.0], 'mgdL': [70, 130]},
+        'after': {'mmolL': [0.0, 10.0], 'mgdL': [0, 180]},
+      },
+      'Severe Hyper-glycaemia': {
+        'before': {'mmolL': [11.1, 99.0], 'mgdL': [200, 999]},
+        'after': {'mmolL': [11.1, 99.0], 'mgdL': [200, 999]},
+      },
+      'Hypoglycaemia': {
+        'before': {'mmolL': [0.0, 3.9], 'mgdL': [0, 70]},
+        'after': {'mmolL': [0.0, 3.9], 'mgdL': [0, 70]},
+      },
+    };
+
+    data.forEach((scenario, mealTimes) {
+      mealTimes.forEach((mealTime, values) {
+        batch.insert('sugar_reference', {
+          'scenario': scenario,
+          'meal_time': mealTime,
+          'min_mmolL': values['mmolL']![0],
+          'max_mmolL': values['mmolL']![1],
+          'min_mgdL': values['mgdL']![0],
+          'max_mgdL': values['mgdL']![1],
+        });
+      });
+    });
+
+    await batch.commit(noResult: true);
+    debugPrint('Sugar reference table seeded.');
   }
 
-  Future<void> updateSugarRef(SugarRefModel ref) async {
+  Future<void> updateSugarRef(SugarReference ref) async {
     final db = await database;
-    await db.update('sugar_reference', ref.toMap(), where: 'id = ?', whereArgs: [ref.id]);
+    await db.update('sugar_reference', ref.toMap(),
+        where: 'id = ?', whereArgs: [ref.id]);
   }
 
-  Future<List<SugarRefModel>> getSugarReferences(String unit) async {
+  Future<List<SugarReference>> getSugarReferences() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('sugar_reference', where: 'unit = ?', whereArgs: [unit]);
-    return maps.map((e) => SugarRefModel.fromMap(e)).toList();
+    final List<Map<String, dynamic>> maps = await db.query('sugar_reference');
+    return maps.map((e) => SugarReference.fromMap(e)).toList();
   }
 
-  Future<List<SugarRefModel>> getSugarReferencesByQuery({
-    required String unit,
+  Future<SugarReference?> getSugarReferenceByQuery({
     required String scenario,
-    String? mealTime,
+    required MealTimeCategory mealTime,
   }) async {
     final db = await database;
-    String whereClause = 'unit = ? AND scenario = ?';
-    List<dynamic> whereArgs = [unit, scenario];
-
-    if (mealTime != null && mealTime != 'any') {
-      whereClause += ' AND meal_time = ?';
-      whereArgs.add(mealTime);
-    }
-
     final List<Map<String, dynamic>> maps = await db.query(
       'sugar_reference',
-      where: whereClause,
-      whereArgs: whereArgs,
+      where: 'scenario = ? AND meal_time = ?',
+      whereArgs: [scenario, mealTime.name],
     );
 
-    return maps.map((map) => SugarRefModel.fromMap(map)).toList();
+    if (maps.isNotEmpty) {
+      return SugarReference.fromMap(maps.first);
+    }
+    return null;
   }
 }
