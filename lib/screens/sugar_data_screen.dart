@@ -936,12 +936,14 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 ];
               }).toList(),
               dataCell(
-                Tooltip(
-                  message: records.first.status.name,
-                  child: Icon(
-                    records.first.status == SugarStatus.good ? Icons.check_circle_outline : Icons.highlight_off,
-                    color: records.first.status == SugarStatus.good ? Colors.green : Colors.red,
-                  ),
+                FutureBuilder<Widget>(
+                  future: _buildStatusIcon(records),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return snapshot.data ?? const SizedBox.shrink();
+                  },
                 ),
                 columnWidths[16],
               ),
@@ -973,6 +975,55 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<Widget> _buildStatusIcon(List<SugarRecord> records) async {
+    if (records.isEmpty) return const SizedBox.shrink();
+
+    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    final userDiabetesType = userProfileProvider.userProfile?.sugarScenario ?? 'non-diabetic';
+
+    final dailyStatus = await analyseStatus(
+      records: records,
+      unit: _currentUnit,
+      userDiabetesType: userDiabetesType,
+    );
+
+    IconData iconData;
+    Color color;
+    String tooltip;
+
+    switch (dailyStatus) {
+      case SugarStatus.excellent:
+        iconData = Icons.check_circle;
+        color = Colors.green;
+        tooltip = 'Excellent';
+        break;
+      case SugarStatus.borderline:
+        iconData = Icons.warning;
+        color = Colors.orange;
+        tooltip = 'Borderline';
+        break;
+      case SugarStatus.low:
+        iconData = Icons.arrow_downward;
+        color = Colors.blue;
+        tooltip = 'Low';
+        break;
+      case SugarStatus.high:
+        iconData = Icons.arrow_upward;
+        color = Colors.red;
+        tooltip = 'High';
+        break;
+      default:
+        iconData = Icons.help_outline;
+        color = Colors.grey;
+        tooltip = 'Unknown';
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Icon(iconData, color: color),
     );
   }
 

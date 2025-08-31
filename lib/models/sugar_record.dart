@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 enum SugarStatus {
+  excellent,
   good,
+  borderline,
   high,
   low,
 }
