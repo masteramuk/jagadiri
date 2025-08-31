@@ -837,6 +837,9 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       return Container(
         width: width,
         padding: const EdgeInsets.symmetric(vertical: 8.0),
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: theme.dividerColor, width: 0.5)),
+        ),
         child: Text(
           text,
           textAlign: TextAlign.center,
@@ -906,11 +909,17 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         return Container(
           width: width,
           padding: const EdgeInsets.symmetric(vertical: 8.0),
+          decoration: BoxDecoration(
+            border: Border(right: BorderSide(color: theme.dividerColor, width: 1)),
+          ),
           child: Center(child: child),
         );
       }
 
       return Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
+        ),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
