@@ -11,18 +11,20 @@ Future<SugarStatus> analyseStatus({
   final db = DatabaseService();
 
   for (final r in records) {
-    final key = r.mealTimeCategory == MealTimeCategory.before ? 'fasting' : 'non-fasting';
-    final ref = await db.getSugarReferencesByQuery(
-        unit: unit,
+    final ref = await db.getSugarReferenceByQuery(
         scenario: userDiabetesType,
-        mealTime: key,
+        mealTime: r.mealTimeCategory,
     );
 
-    if (ref.isEmpty) continue;
+    if (ref == null) continue;
 
-    final row = ref.first;
-    if (row.min != null && r.value < row.min) return SugarStatus.low;
-    if (row.max != null && r.value > row.max) return SugarStatus.high;
+    if (unit == 'Metric') { // mmol/L
+      if (r.value < ref.minMmolL) return SugarStatus.low;
+      if (r.value > ref.maxMmolL) return SugarStatus.high;
+    } else { // US (mg/dL)
+      if (r.value < ref.minMgdL) return SugarStatus.low;
+      if (r.value > ref.maxMgdL) return SugarStatus.high;
+    }
   }
   return SugarStatus.good;
 }

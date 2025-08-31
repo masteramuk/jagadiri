@@ -1,53 +1,45 @@
-import 'package:jagadiri/models/sugar_record.dart'; // For MealTimeCategory and MealType
+import 'package:jagadiri/models/sugar_record.dart'; // For MealTimeCategory
 
 class SugarReference {
   final int? id;
   final String scenario;
-  final String unit;
   final MealTimeCategory mealTime;
-  final MealType mealType;
-  final double minValue;
-  final double maxValue;
-  final int? createdAt;
+  final double minMmolL;
+  final double maxMmolL;
+  final double minMgdL;
+  final double maxMgdL;
 
   SugarReference({
     this.id,
     required this.scenario,
-    required this.unit,
     required this.mealTime,
-    required this.mealType,
-    required this.minValue,
-    required this.maxValue,
-    this.createdAt,
+    required this.minMmolL,
+    required this.maxMmolL,
+    required this.minMgdL,
+    required this.maxMgdL,
   });
 
-  // Factory constructor to create a SugarReference from a database map
-  factory SugarReference.fromDbMap(Map<String, dynamic> map) {
+  factory SugarReference.fromMap(Map<String, dynamic> map) {
     return SugarReference(
       id: map['id'],
       scenario: map['scenario'],
-      unit: map['unit'],
-      mealTime: MealTimeCategory.values.firstWhere(
-          (e) => e.toString().split('.').last == map['meal_time']),
-      mealType: MealType.values.firstWhere(
-          (e) => e.toString().split('.').last == map['meal_type']),
-      minValue: map['min_value'],
-      maxValue: map['max_value'],
-      createdAt: map['created_at'],
+      mealTime: MealTimeCategory.values.firstWhere((e) => e.name == map['meal_time']),
+      minMmolL: map['min_mmolL'],
+      maxMmolL: map['max_mmolL'],
+      minMgdL: map['min_mgdL'],
+      maxMgdL: map['max_mgdL'],
     );
   }
 
-  // Method to convert SugarReference to a database map
-  Map<String, dynamic> toDbMap() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'scenario': scenario,
-      'unit': unit,
-      'meal_time': mealTime.toString().split('.').last,
-      'meal_type': mealType.toString().split('.').last,
-      'min_value': minValue,
-      'max_value': maxValue,
-      'created_at': createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'meal_time': mealTime.name,
+      'min_mmolL': minMmolL,
+      'max_mmolL': maxMmolL,
+      'min_mgdL': minMgdL,
+      'max_mgdL': maxMgdL,
     };
   }
 }

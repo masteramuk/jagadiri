@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jagadiri/models/sugar_ref_model.dart';
+import 'package:jagadiri/models/sugar_reference.dart';
 import 'package:jagadiri/services/database_service.dart';
 
 class EditSugarReferenceScreen extends StatefulWidget {
@@ -10,11 +10,12 @@ class EditSugarReferenceScreen extends StatefulWidget {
 }
 
 class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
-  late Future<List<SugarRefModel>> _sugarReferencesFuture;
+  late Future<List<SugarReference>> _sugarReferencesFuture;
   final _formKey = GlobalKey<FormState>();
-  late List<TextEditingController> _minControllers;
-  late List<TextEditingController> _maxControllers;
-  String _currentUnit = 'mmol/L';
+  late List<TextEditingController> _minMmolLControllers;
+  late List<TextEditingController> _maxMmolLControllers;
+  late List<TextEditingController> _minMgdLControllers;
+  late List<TextEditingController> _maxMgdLControllers;
 
   @override
   void initState() {
@@ -23,10 +24,12 @@ class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
   }
 
   void _loadSugarReferences() {
-    _sugarReferencesFuture = DatabaseService().getSugarReferences(_currentUnit);
+    _sugarReferencesFuture = DatabaseService().getSugarReferences();
     _sugarReferencesFuture.then((refs) {
-      _minControllers = refs.map((ref) => TextEditingController(text: ref.min.toString())).toList();
-      _maxControllers = refs.map((ref) => TextEditingController(text: ref.max.toString())).toList();
+      _minMmolLControllers = refs.map((ref) => TextEditingController(text: ref.minMmolL.toString())).toList();
+      _maxMmolLControllers = refs.map((ref) => TextEditingController(text: ref.maxMmolL.toString())).toList();
+      _minMgdLControllers = refs.map((ref) => TextEditingController(text: ref.minMgdL.toString())).toList();
+      _maxMgdLControllers = refs.map((ref) => TextEditingController(text: ref.maxMgdL.toString())).toList();
     });
   }
 
@@ -36,29 +39,13 @@ class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
       appBar: AppBar(
         title: const Text('Edit Sugar Reference'),
         actions: [
-          DropdownButton<String>(
-            value: _currentUnit,
-            items: <String>['mmol/L', 'mg/dL']
-                .map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              setState(() {
-                _currentUnit = newValue!;
-                _loadSugarReferences();
-              });
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: _saveChanges,
           ),
         ],
       ),
-      body: FutureBuilder<List<SugarRefModel>>(
+      body: FutureBuilder<List<SugarReference>>(
         future: _sugarReferencesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -78,51 +65,21 @@ class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
                 columns: const [
                   DataColumn(label: Text('Scenario')),
                   DataColumn(label: Text('Meal Time')),
-                  DataColumn(label: Text('Min Value')),
-                  DataColumn(label: Text('Max Value')),
+                  DataColumn(label: Text('Min (mmol/L)')),
+                  DataColumn(label: Text('Max (mmol/L)')),
+                  DataColumn(label: Text('Min (mg/dL)')),
+                  DataColumn(label: Text('Max (mg/dL)')),
                 ],
                 rows: List<DataRow>.generate(sugarRefs.length, (index) {
                   final ref = sugarRefs[index];
                   return DataRow(
                     cells: [
                       DataCell(Text(ref.scenario)),
-                      DataCell(Text(ref.mealTime)),
-                      DataCell(
-                        SizedBox(
-                          width: 100,
-                          child: TextFormField(
-                            controller: _minControllers[index],
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a value';
-                              }
-                              if (double.tryParse(value) == null) {
-                                return 'Please enter a valid number';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        SizedBox(
-                          width: 100,
-                          child: TextFormField(
-                            controller: _maxControllers[index],
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a value';
-                              }
-                              if (double.tryParse(value) == null) {
-                                return 'Please enter a valid number';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ),
+                      DataCell(Text(ref.mealTime.name)),
+                      DataCell(_buildTextFormField(_minMmolLControllers[index])),
+                      DataCell(_buildTextFormField(_maxMmolLControllers[index])),
+                      DataCell(_buildTextFormField(_minMgdLControllers[index])),
+                      DataCell(_buildTextFormField(_maxMgdLControllers[index])),
                     ],
                   );
                 }),
@@ -134,20 +91,38 @@ class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
     );
   }
 
+  Widget _buildTextFormField(TextEditingController controller) {
+    return SizedBox(
+      width: 100,
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter a value';
+          }
+          if (double.tryParse(value) == null) {
+            return 'Please enter a valid number';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
   void _saveChanges() {
     if (_formKey.currentState!.validate()) {
       _sugarReferencesFuture.then((refs) {
         for (int i = 0; i < refs.length; i++) {
           final ref = refs[i];
-          final newMin = double.parse(_minControllers[i].text);
-          final newMax = double.parse(_maxControllers[i].text);
-          final updatedRef = SugarRefModel(
+          final updatedRef = SugarReference(
             id: ref.id,
             scenario: ref.scenario,
-            unit: ref.unit,
             mealTime: ref.mealTime,
-            min: newMin,
-            max: newMax,
+            minMmolL: double.parse(_minMmolLControllers[i].text),
+            maxMmolL: double.parse(_maxMmolLControllers[i].text),
+            minMgdL: double.parse(_minMgdLControllers[i].text),
+            maxMgdL: double.parse(_maxMgdLControllers[i].text),
           );
           DatabaseService().updateSugarRef(updatedRef);
         }
