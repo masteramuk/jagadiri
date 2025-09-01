@@ -881,11 +881,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           text,
           textAlign: TextAlign.center,
           style: (isSubHeader
-              ? theme.textTheme.bodyMedium
-              : theme.textTheme.bodyMedium)
+              ? theme.textTheme.titleMedium
+              : theme.textTheme.titleMedium)
               ?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onPrimary,
+            color: theme.colorScheme.onSurface,
           ),
         ),
       );
