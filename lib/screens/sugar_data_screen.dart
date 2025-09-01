@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/services/database_service.dart';
+import 'package:jagadiri/models/sugar_reference.dart';
+import 'package:jagadiri/models/user_profile.dart';
 import 'package:collection/collection.dart';
 
 import 'package:jagadiri/providers/user_profile_provider.dart';
@@ -47,7 +49,42 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchInitialData();
     _fetchSugarRecords();
+  }
+
+  Future<void> _fetchInitialData() async {
+    final db = Provider.of<DatabaseService>(context, listen: false);
+
+    // 1. Fetch the user profile first
+    final profile = await db.getUserProfile();
+    if (profile == null) {
+      debugPrint('No user profile found.');
+      return; // nothing more to do
+    }
+
+    // 2. Now that we have the profile, use its sugarScenario
+    final refs = await db.getSugarReferencesScenario(profile.sugarScenario.toString());
+
+    setState(() {
+      // keep any existing setState body if you need it
+    });
+
+    debugPrint('--- Sugar References ---');
+    for (final ref in refs) {
+      debugPrint('SugarReference{id: ${ref.id}, scenario: ${ref.scenario}, '
+          'mealTime: ${ref.mealTime}, minMmolL: ${ref.minMmolL}, '
+          'maxMmolL: ${ref.maxMmolL}, minMgdL: ${ref.minMgdL}, '
+          'maxMgdL: ${ref.maxMgdL}}');
+    }
+
+    debugPrint('--- User Profile ---');
+    debugPrint('UserProfile{id: ${profile.id}, name: ${profile.name}, '
+        'dob: ${profile.dob}, height: ${profile.height}, '
+        'weight: ${profile.weight}, targetWeight: ${profile.targetWeight}, '
+        'measurementUnit: ${profile.measurementUnit}, gender: ${profile.gender}, '
+        'exerciseFrequency: ${profile.exerciseFrequency}, '
+        'sugarScenario: ${profile.sugarScenario}}');
   }
 
   @override
