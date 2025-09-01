@@ -374,6 +374,16 @@ class DatabaseService {
     return maps.map((e) => SugarReference.fromMap(e)).toList();
   }
 
+  Future<List<SugarReference>> getSugarReferencesScenario(String sugarScenario) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'sugar_reference',
+      where: 'scenario = ?',          // SQL WHERE clause
+      whereArgs: [sugarScenario],     // value(s) for the ? placeholder(s)
+    );
+    return maps.map((e) => SugarReference.fromMap(e)).toList();
+  }
+
   Future<SugarReference?> getSugarReferenceByQuery({
     required String scenario,
     required MealTimeCategory mealTime,
