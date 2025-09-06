@@ -207,7 +207,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final now = DateTime.now();
     int age = now.year - dob.year;
     if (now.month < dob.month ||
-        (now.month == dob.month && now.day < dob.day)) {age--;};
+        (now.month == dob.month && now.day < dob.day)) {age--;}
     return age;
   } // End of _getAge method
 
@@ -645,7 +645,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                   const SizedBox(height: 16.0),
                                   const Text('Diabetic Status', style: TextStyle(fontWeight: FontWeight.bold)),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedSugarScenario,
+                                    initialValue: _selectedSugarScenario,
                                     items: [
                                       'Non-Diabetic',
                                       'Prediabetes',
