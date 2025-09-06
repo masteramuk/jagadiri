@@ -44,6 +44,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   final _dateController = TextEditingController();
   final _timeController = TextEditingController();
   final _sugarValueController = TextEditingController();
+  UserProfile? profile;          // <- NEW
+  List<SugarReference> refs = []; // <- NEW
 
   /* -------------------- Life-cycle -------------------- */
   @override
@@ -57,21 +59,23 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final db = Provider.of<DatabaseService>(context, listen: false);
 
     // 1. Fetch the user profile first
-    final profile = await db.getUserProfile();
-    if (profile == null) {
+    final p = await db.getUserProfile();
+    if (p == null) {
       debugPrint('No user profile found.');
       return; // nothing more to do
     }
 
     // 2. Now that we have the profile, use its sugarScenario
-    final refs = await db.getSugarReferencesScenario(profile.sugarScenario.toString());
+    final r = await db.getSugarReferencesScenario(p.sugarScenario.toString());
 
     setState(() {
       // keep any existing setState body if you need it
+      profile = p;
+      refs = r;
     });
 
     debugPrint('--- Sugar References ---');
-    for (final ref in refs) {
+    for (final ref in r) {
       debugPrint('SugarReference{id: ${ref.id}, scenario: ${ref.scenario}, '
           'mealTime: ${ref.mealTime}, minMmolL: ${ref.minMmolL}, '
           'maxMmolL: ${ref.maxMmolL}, minMgdL: ${ref.minMgdL}, '
@@ -79,12 +83,12 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     }
 
     debugPrint('--- User Profile ---');
-    debugPrint('UserProfile{id: ${profile.id}, name: ${profile.name}, '
-        'dob: ${profile.dob}, height: ${profile.height}, '
-        'weight: ${profile.weight}, targetWeight: ${profile.targetWeight}, '
-        'measurementUnit: ${profile.measurementUnit}, gender: ${profile.gender}, '
-        'exerciseFrequency: ${profile.exerciseFrequency}, '
-        'sugarScenario: ${profile.sugarScenario}}');
+    debugPrint('UserProfile{id: ${p.id}, name: ${p.name}, '
+        'dob: ${p.dob}, height: ${p.height}, '
+        'weight: ${p.weight}, targetWeight: ${p.targetWeight}, '
+        'measurementUnit: ${p.measurementUnit}, gender: ${p.gender}, '
+        'exerciseFrequency: ${p.exerciseFrequency}, '
+        'sugarScenario: ${p.sugarScenario}}');
   }
 
   @override
@@ -185,10 +189,19 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final time = TimeOfDay.fromDateTime(
         DateFormat('hh:mm a').parse(_timeController.text));
     final value = double.tryParse(_sugarValueController.text) ?? 0.0;
-    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-    final userDiabetesType = userProfileProvider.userProfile?.sugarScenario ?? 'non-diabetic';
 
-    final status = await analyseStatus(
+    /* ----------------------------------------------
+     * 1. Pick the correct reference from the already-loaded list
+     * ---------------------------------------------- */
+    final ref = refs.firstWhere(                                      // <-- NEW
+          (r) => r.mealTime == cat,                                       // <-- NEW
+      orElse: () => refs.first,                                       // <-- NEW
+    );                                                                // <-- NEW
+
+    /* ----------------------------------------------
+     * 2. NEW SIGNATURE – synchronous, no DB hit
+     * ---------------------------------------------- */
+    final status = analyseStatus(                                     // <-- CHANGED
       records: [
         SugarRecord(
           date: date,
@@ -200,7 +213,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         )
       ],
       unit: _currentUnit,
-      userDiabetesType: userDiabetesType,
+      ref: ref,                                                       // <-- NEW
     );
 
     final record = SugarRecord(
@@ -254,7 +267,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     // Group records by date to calculate total rows for pagination
     final groupedByDate = groupBy(
       _filteredSugarRecords,
-      (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day),
+          (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day),
     );
     final sortedDates = groupedByDate.keys.toList()
       ..sort((a, b) => b.compareTo(a));
@@ -264,34 +277,34 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _summaryCards(),
-                  _buildExpandableCard(
-                    title: 'Latest Record',
-                    content: _latestCard(),
-                    isExpanded: _isLatestCardExpanded,
-                    onToggle: () {
-                      setState(() {
-                        _isLatestCardExpanded = !_isLatestCardExpanded;
-                      });
-                    },
-                  ),
-                  _buildExpandableCard(
-                    title: 'Search',
-                    content: _searchCard(),
-                    isExpanded: _isSearchCardExpanded,
-                    onToggle: () {
-                      setState(() {
-                        _isSearchCardExpanded = !_isSearchCardExpanded;
-                      });
-                    },
-                  ),
-                  _recordsTable(theme, groupedByDate, sortedDates),
-                  _pagination(sortedDates.length),
-                ],
-              ),
+        child: Column(
+          children: [
+            _summaryCards(),
+            _buildExpandableCard(
+              title: 'Latest Record',
+              content: _latestCard(),
+              isExpanded: _isLatestCardExpanded,
+              onToggle: () {
+                setState(() {
+                  _isLatestCardExpanded = !_isLatestCardExpanded;
+                });
+              },
             ),
+            _buildExpandableCard(
+              title: 'Search',
+              content: _searchCard(),
+              isExpanded: _isSearchCardExpanded,
+              onToggle: () {
+                setState(() {
+                  _isSearchCardExpanded = !_isSearchCardExpanded;
+                });
+              },
+            ),
+            _recordsTable(theme, groupedByDate, sortedDates),
+            _pagination(sortedDates.length),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormDialog(),
         child: const Icon(Icons.add),
@@ -316,8 +329,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         children: [
           ListTile(
             title: Text(
-                title,
-                style: Theme. of(context).textTheme.titleMedium,
+              title,
+              style: Theme. of(context).textTheme.titleMedium,
             ),
             trailing: IconButton(
               icon: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
@@ -648,13 +661,13 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<MealType>(
-                    value: _searchMealType,
+                    initialValue: _searchMealType,
                     hint: const Text('All Meal Types'),
                     items: MealType.values
                         .map((e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(_formatMealType(e.name)),
-                            ))
+                      value: e,
+                      child: Text(_formatMealType(e.name)),
+                    ))
                         .toList(),
                     onChanged: (val) {
                       setState(() => _searchMealType = val);
@@ -694,12 +707,12 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () {
-                        _searchStartDateController.clear();
-                        _searchEndDateController.clear();
-                        setState(() {
-                          _searchMealType = null;
-                        });
-                        _filter();
+                      _searchStartDateController.clear();
+                      _searchEndDateController.clear();
+                      setState(() {
+                        _searchMealType = null;
+                      });
+                      _filter();
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Reset'),
@@ -713,125 +726,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
-  /*
-  Widget _recordsTable(ThemeData theme, Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
-    final paginatedDates = sortedDates
-        .skip(_currentPage * _rowsPerPage)
-        .take(_rowsPerPage)
-        .toList();
-
-    if (paginatedDates.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: Text('No records found for the selected criteria.')),
-      );
-    }
-
-    DataColumn _buildStyledHeader(String main, {String sub = ''}) {
-      return DataColumn(
-        label: Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(main, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary), textAlign: TextAlign.center), 
-                if (sub.isNotEmpty)
-                  Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary), textAlign: TextAlign.center),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    String formatHeader(String name) {
-      if (name.isEmpty) return '';
-      var result = name.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
-      return result[0].toUpperCase() + result.substring(1);
-    }
-
-    final List<DataColumn> columns = [
-      _buildStyledHeader('Date'),
-      _buildStyledHeader('Time'),
-    ];
-    for (var type in MealType.values) {
-      columns.add(_buildStyledHeader(formatHeader(type.name), sub: 'Before'));
-      columns.add(_buildStyledHeader('', sub: 'After'));
-    }
-    columns.addAll([_buildStyledHeader('Status'), _buildStyledHeader('Actions')]);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.primaryColor),
-        border: TableBorder.all(color: theme.dividerColor, width: 1),
-        columns: columns,
-        rows: paginatedDates.map((date) {
-          final recordsForDate = groupedByDate[date]!;
-          final timesString = recordsForDate.map((r) => r.time.format(context)).join(',\n');
-          final recordsMap = {for (var r in recordsForDate) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
-
-          final List<DataCell> cells = [
-            DataCell(Center(child: Text(DateFormat('dd-MMM-yy').format(date)))),
-            DataCell(Center(child: Text(timesString))),
-          ];
-
-          for (var type in MealType.values) {
-            for (var category in MealTimeCategory.values) {
-              final key = '${type.name}_${category.name}';
-              final record = recordsMap[key];
-              cells.add(DataCell(Center(child: FittedBox(child: Text(record?.value.toStringAsFixed(1) ?? '')))));
-            }
-          }
-
-          cells.addAll([
-            DataCell(Center(child: Tooltip(message: recordsForDate.first.status.name, child: Icon(recordsForDate.first.status == SugarStatus.good ? Icons.check_circle_outline : Icons.highlight_off, color: recordsForDate.first.status == SugarStatus.good ? Colors.green : Colors.red)))),
-            DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: recordsForDate.length == 1 ? () => _showFormDialog(editing: recordsForDate.first) : null), IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, recordsForDate))]))), 
-          ]);
-
-          return DataRow(cells: cells);
-        }).toList(),
-      ),
-    );
-  }
-  */
-
-  //changes made here
-  // Place this inside the _SugarDataScreenState class
-
-
-
-// Helper to create a styled header cell.
-  Widget _buildHeaderCell(String text, ThemeData theme, {int flex = 1}) {
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: theme.dividerColor, width: 0.5),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Replace the entire existing _recordsTable function with this one.
-
-
-  //works but overflow
   Widget _recordsTable(ThemeData theme, Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
     final paginatedDates = sortedDates
         .skip(_currentPage * _rowsPerPage)
@@ -866,7 +760,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       60.0, // Status
       100.0, // Actions
     ];
-
     final double totalTableWidth = columnWidths.reduce((a, b) => a + b);
 
     // --- Helper for a styled header cell ---
@@ -881,11 +774,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           text,
           textAlign: TextAlign.center,
           style: (isSubHeader
-              ? theme.textTheme.titleMedium
-              : theme.textTheme.titleMedium)
+              ? theme.textTheme.bodySmall
+              : theme.textTheme.bodyMedium)
               ?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
+            color: theme.colorScheme.onPrimary,
           ),
         ),
       );
@@ -910,7 +803,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     final widget = headerCell(formatHeader(type.name), width);
                     mealTypeStartIndex += 2;
                     return widget;
-                  }).toList(),
+                  }),
                   headerCell('Status', columnWidths[16]),
                   headerCell('Actions', columnWidths[17]),
                 ],
@@ -971,7 +864,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   dataCell(FittedBox(child: Text(beforeRecord?.value.toStringAsFixed(1) ?? '')) , columnWidths[index]),
                   dataCell(FittedBox(child: Text(afterRecord?.value.toStringAsFixed(1) ?? '')), columnWidths[index + 1]),
                 ];
-              }).toList(),
+              }),
               dataCell(
                 FutureBuilder<Widget>(
                   future: _buildStatusIcon(records),
@@ -1008,7 +901,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         child: Column(
           children: [
             buildHeader(),
-            ...paginatedDates.map((date) => buildDataRow(date, groupedByDate[date]!)).toList(),
+            ...paginatedDates.map((date) => buildDataRow(date, groupedByDate[date]!)),
           ],
         ),
       ),
@@ -1017,16 +910,28 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
   Future<Widget> _buildStatusIcon(List<SugarRecord> records) async {
     if (records.isEmpty) return const SizedBox.shrink();
+    if (profile == null) return const Center(child: CircularProgressIndicator());
 
-    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-    final userDiabetesType = userProfileProvider.userProfile?.sugarScenario ?? 'non-diabetic';
-
-    final dailyStatus = await analyseStatus(
-      records: records,
-      unit: _currentUnit,
-      userDiabetesType: userDiabetesType,
+    /* ----------------------------------------------
+   * 1. Pick the correct reference from the list we already loaded
+   * ---------------------------------------------- */
+    final ref = refs.firstWhere(
+          (r) => r.mealTime == records.first.mealTimeCategory,
+      orElse: () => refs.first,   // fallback
     );
 
+    /* ----------------------------------------------
+   * 2. NEW SIGNATURE – synchronous, no DB hit
+   * ---------------------------------------------- */
+    final dailyStatus = analyseStatus(
+      records: records,
+      unit: _currentUnit,
+      ref: ref,                     // <- pass the pre-loaded row
+    );
+
+    /* ----------------------------------------------
+   * 3. Rest of your icon logic – unchanged
+   * ---------------------------------------------- */
     IconData iconData;
     Color color;
     String tooltip;
@@ -1063,189 +968,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       child: Icon(iconData, color: color),
     );
   }
-
-  //original  and works also but not nice
-  /*Widget _recordsTable(ThemeData theme, Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
-    final paginatedDates = sortedDates
-        .skip(_currentPage * _rowsPerPage)
-        .take(_rowsPerPage)
-        .toList();
-
-    if (paginatedDates.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: Text('No records found for the selected criteria.')),
-      );
-    }
-
-    String formatHeader(String name) {
-      if (name.isEmpty) return '';
-      var result = name.replaceAllMapped(RegExp(r'(?<!^)(?=[A-Z])'), (match) => ' ');
-      return result[0].toUpperCase() + result.substring(1);
-    }
-
-    // --- Define fixed widths for each column ---
-    final List<double> columnWidths = [
-      85.0, // Date
-      85.0, // Time
-      // 7 Meal Types * 2 columns each (Before/After)
-      70.0, 70.0, // Breakfast
-      70.0, 70.0, // Mid Morning Snack
-      70.0, 70.0, // Lunch
-      70.0, 70.0, // Afternoon Snack
-      70.0, 70.0, // Dinner
-      70.0, 70.0, // Evening Snack
-      70.0, 70.0, // Before Bed
-      60.0, // Status
-      80.0, // Actions
-    ];
-    final double totalTableWidth = columnWidths.reduce((a, b) => a + b);
-
-    // --- Helper for a styled header cell ---
-    Widget headerCell(String text, double width, {bool isSubHeader = false}) {
-      return Container(
-        width: width,
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: theme.dividerColor, width: 0.5)),
-        ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: (isSubHeader
-              ? theme.textTheme.bodySmall
-              : theme.textTheme.bodyMedium)
-              ?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onPrimary,
-          ),
-        ),
-      );
-    }
-
-    // --- Custom Header Builder ---
-    Widget buildHeader() {
-      int mealTypeStartIndex = 2; // Index after Date and Time
-      return Container(
-        color: theme.primaryColor,
-        child: Column(
-          children: [
-            // --- Top Header Row ---
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  headerCell('Date', columnWidths[0]),
-                  headerCell('Time', columnWidths[1]),
-                  ...MealType.values.map((type) {
-                    final width = columnWidths[mealTypeStartIndex] + columnWidths[mealTypeStartIndex + 1];
-                    final widget = headerCell(formatHeader(type.name), width);
-                    mealTypeStartIndex += 2;
-                    return widget;
-                  }).toList(),
-                  headerCell('Status', columnWidths[16]),
-                  headerCell('Actions', columnWidths[17]),
-                ],
-              ),
-            ),
-            // --- Bottom Header Row (Sub-header) ---
-            Row(
-              children: [
-                Container(width: columnWidths[0] + columnWidths[1]), // Date & Time placeholder
-                ...List.generate(7, (index) {
-                  final baseIndex = 2 + (index * 2);
-                  return Row(
-                    children: [
-                      headerCell('Before', columnWidths[baseIndex], isSubHeader: true),
-                      headerCell('After', columnWidths[baseIndex + 1], isSubHeader: true),
-                    ],
-                  );
-                }),
-                Container(width: columnWidths[16] + columnWidths[17]), // Status & Actions placeholder
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    // --- Custom Data Row Builder ---
-    Widget buildDataRow(DateTime date, List<SugarRecord> records) {
-      final timesString = records.map((r) => r.time.format(context)).join(',\n');
-      final recordsMap = {for (var r in records) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
-
-      Widget dataCell(Widget child, double width) {
-        return Container(
-          width: width,
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          decoration: BoxDecoration(
-            border: Border(right: BorderSide(color: theme.dividerColor, width: 1)),
-          ),
-          child: Center(child: child),
-        );
-      }
-
-      return Container(
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              dataCell(Text(DateFormat('dd-MMM-yy').format(date)), columnWidths[0]),
-              dataCell(Text(timesString), columnWidths[1]),
-              ...MealType.values.expand((type) {
-                int index = MealType.values.indexOf(type) * 2 + 2;
-                final beforeRecord = recordsMap['${type.name}_${MealTimeCategory.before.name}'];
-                final afterRecord = recordsMap['${type.name}_${MealTimeCategory.after.name}'];
-                return [
-                  dataCell(FittedBox(child: Text(beforeRecord?.value.toStringAsFixed(1) ?? '')) , columnWidths[index]),
-                  dataCell(FittedBox(child: Text(afterRecord?.value.toStringAsFixed(1) ?? '')), columnWidths[index + 1]),
-                ];
-              }).toList(),
-              dataCell(
-                Tooltip(
-                  message: records.first.status.name,
-                  child: Icon(
-                    records.first.status == SugarStatus.good ? Icons.check_circle_outline : Icons.highlight_off,
-                    color: records.first.status == SugarStatus.good ? Colors.green : Colors.red,
-                  ),
-                ),
-                columnWidths[16],
-              ),
-              dataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: records.length == 1 ? () => _showFormDialog(editing: records.first) : null),
-                    IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, records)),
-                  ],
-                ),
-                columnWidths[17],
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        width: totalTableWidth,
-        decoration: BoxDecoration(border: Border.all(color: theme.dividerColor, width: 1)),
-        child: Column(
-          children: [
-            buildHeader(),
-            ...paginatedDates.map((date) => buildDataRow(date, groupedByDate[date]!)).toList(),
-          ],
-        ),
-      ),
-    );
-  }*/
-  //changes end here
 
   void _showDeleteConfirmation(DateTime date, List<SugarRecord> records) {
     showDialog(
@@ -1357,7 +1079,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   onTap: _pickTime,
                 ),
                 DropdownButtonFormField<MealTimeCategory>(
-                  value: cat,
+                  initialValue: cat,
                   items: MealTimeCategory.values
                       .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
@@ -1365,7 +1087,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   decoration: const InputDecoration(labelText: 'Meal Time'),
                 ),
                 DropdownButtonFormField<MealType>(
-                  value: type,
+                  initialValue: type,
                   items: MealType.values
                       .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
@@ -1389,7 +1111,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                       if (v < 0.5 || v > 25.0) return 'Range 0.5 – 25.0 mmol/L';
                     } else {
                       if (v < 9 || v > 450) return 'Range 9 – 450 mg/dL';
-                    };
+                    }
                     return null;
                   },
                 )
