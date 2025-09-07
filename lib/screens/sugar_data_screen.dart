@@ -836,7 +836,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     // --- Custom Data Row Builder ---
     Widget buildDataRow(DateTime date, List<SugarRecord> records) {
-      final timesString = records.map((r) => r.time.format(context)).join(',\n');
+      final timesString = records.length > 1 ? '-' : records.first.time.format(context);
       final recordsMap = {for (var r in records) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
 
       Widget dataCell(Widget child, double width) {
@@ -886,8 +886,24 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(icon: const Icon(Icons.edit), iconSize: 20, tooltip: 'Edit Record', onPressed: records.length == 1 ? () => _showFormDialog(editing: records.first) : null),
-                    IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, records)),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      iconSize: 20,
+                      tooltip: 'Edit Record',
+                      onPressed: () {
+                        if (records.length == 1) {
+                          _showFormDialog(editing: records.first);
+                        } else {
+                          _showRecordSelectionDialog(records, isEditing: true);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      iconSize: 20,
+                      tooltip: 'Delete Record(s)',
+                      onPressed: () => _showRecordSelectionDialog(records, isEditing: false),
+                    ),
                   ],
                 ),
                 columnWidths[13],
@@ -973,25 +989,115 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 
-  void _showDeleteConfirmation(DateTime date, List<SugarRecord> records) {
+  void _showRecordSelectionDialog(
+      List<SugarRecord> records, {
+        required bool isEditing,
+      }) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete all ${records.length} record(s) for ${DateFormat.yMd().format(date)}?'),
-          actions: <Widget>[
-            TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(context).pop()),
-            TextButton(
-              child: const Text('Delete'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                for (var record in records) {
-                  if (record.id != null) _deleteRecord(record.id!);
+        // Use a StatefulWidget for the dialog content to manage checkbox state
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final Set<int> selectedRecordIds = {};
+            bool selectAll = false;
+
+            // Helper to build a list tile for a record
+            Widget buildRecordTile(SugarRecord record) {
+              final dt = DateTime(
+                record.date.year,
+                record.date.month,
+                record.date.day,
+                record.time.hour,
+                record.time.minute,
+              );
+              final isSelected = selectedRecordIds.contains(record.id);
+
+              return ListTile(
+                title: Text(
+                  '${_formatMealType(record.mealType.name)} (${record.value.toStringAsFixed(1)})',
+                ),
+                subtitle: Text(
+                  '${DateFormat('hh:mm a').format(dt)} - ${_formatMealType(record.mealTimeCategory.name)}',
+                ),
+                onTap: isEditing
+                    ? () {
+                  Navigator.of(context).pop(); // Close selection dialog
+                  _showFormDialog(editing: record); // Open edit form
                 }
-              },
-            ),
-          ],
+                    : () {
+                  // Toggle selection for delete
+                  setState(() {
+                    if (isSelected) {
+                      selectedRecordIds.remove(record.id);
+                    } else {
+                      selectedRecordIds.add(record.id!);
+                    }
+                  });
+                },
+                trailing: isEditing
+                    ? const Icon(Icons.edit)
+                    : Checkbox(
+                  value: isSelected,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      if (value == true) {
+                        selectedRecordIds.add(record.id!);
+                      } else {
+                        selectedRecordIds.remove(record.id);
+                      }
+                    });
+                  },
+                ),
+              );
+            }
+
+            return AlertDialog(
+              title: Text(isEditing ? 'Select Record to Edit' : 'Select Records to Delete'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    if (!isEditing) // Show "Select All" only for delete
+                      CheckboxListTile(
+                        title: const Text('Select All'),
+                        value: selectAll,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            selectAll = value ?? false;
+                            if (selectAll) {
+                              selectedRecordIds.addAll(records.map((r) => r.id!));
+                            } else {
+                              selectedRecordIds.clear();
+                            }
+                          });
+                        },
+                      ),
+                    ...records.map(buildRecordTile).toList(),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                if (!isEditing) // Show "Delete" button only for delete
+                  ElevatedButton(
+                    child: const Text('Delete Selected'),
+                    onPressed: selectedRecordIds.isEmpty
+                        ? null // Disable if nothing is selected
+                        : () {
+                      Navigator.of(context).pop(); // Close dialog
+                      for (final id in selectedRecordIds) {
+                        _deleteRecord(id);
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1031,14 +1137,15 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
   /* -------------------- Form dialog -------------------- */
   void _showFormDialog({SugarRecord? editing}) {
-    if (editing == null) _clearForm();
-    _dateController.text = editing?.date
-        .toIso8601String()
-        .split('T')
-        .first ??
-        DateFormat('dd-MMM-yyyy').format(DateTime.now());
-    _timeController.text = editing?.time.format(context) ?? '';
-    _sugarValueController.text = editing?.value.toString() ?? '';
+    // 1. Set initial values
+    if (editing == null) {
+      _clearForm();
+      _dateController.text = DateFormat('dd-MMM-yyyy').format(DateTime.now());
+    } else {
+      _dateController.text = DateFormat('dd-MMM-yyyy').format(editing.date);
+      _timeController.text = editing.time.format(context);
+      _sugarValueController.text = editing.value.toString();
+    }
 
     MealTimeCategory? cat = editing?.mealTimeCategory ?? MealTimeCategory.before;
     MealType? type = editing?.mealType ?? MealType.breakfast;
@@ -1055,7 +1162,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
             child: Text(
-              editing == null ? 'Add Record': 'Edit Record',
+              editing == null ? 'Add Record' : 'Edit Record',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -1068,26 +1175,27 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 2. Disable fields in edit mode
                 TextField(
                   controller: _dateController,
-                  readOnly: true,
+                  readOnly: true, // Always readOnly, rely on onTap
                   decoration: const InputDecoration(
                       labelText: 'Date', suffixIcon: Icon(Icons.calendar_today)),
-                  onTap: () => _pickDate(_dateController),
+                  onTap: editing == null ? () => _pickDate(_dateController) : null,
                 ),
                 TextField(
                   controller: _timeController,
-                  readOnly: true,
+                  readOnly: true, // Always readOnly, rely on onTap
                   decoration: const InputDecoration(
                       labelText: 'Time', suffixIcon: Icon(Icons.access_time)),
-                  onTap: _pickTime,
+                  onTap: editing == null ? _pickTime : null,
                 ),
                 DropdownButtonFormField<MealTimeCategory>(
                   initialValue: cat,
                   items: MealTimeCategory.values
                       .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
-                  onChanged: (v) => setState2(() => cat = v),
+                  onChanged: editing == null ? (v) => setState2(() => cat = v) : null,
                   decoration: const InputDecoration(labelText: 'Meal Time'),
                 ),
                 DropdownButtonFormField<MealType>(
@@ -1099,15 +1207,15 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                       .map((e) => DropdownMenuItem(
                           value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
-                  onChanged: (v) => setState2(() => type = v),
+                  onChanged: editing == null ? (v) => setState2(() => type = v) : null,
                   decoration: const InputDecoration(labelText: 'Meal Type'),
                 ),
                 TextFormField(
                   controller: _sugarValueController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*$')), // digits + single dot
-                  ],
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*')),
+                  ], // digits + single dot
                   decoration: InputDecoration(
                     labelText: 'Sugar Value',
                     hintText: _currentUnit == 'Metric' ? '0.5 – 25.0 mmol/L' : '9 – 450 mg/dL',
@@ -1139,3 +1247,4 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     );
   }
 }
+
