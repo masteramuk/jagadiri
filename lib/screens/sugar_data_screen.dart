@@ -234,29 +234,39 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       Navigator.pop(context);
       _fetchSugarRecords();
       _clearForm();
+      _showSuccessSnackBar('Record saved successfully.');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Save failed: $e')),
-      );
+      _showErrorSnackBar('Failed to save record. Please try again.');
     }
   }
 
   Future<void> _deleteRecord(int id) async {
-    try {
-      await Provider.of<DatabaseService>(context, listen: false)
-          .deleteSugarRecord(id);
-      _fetchSugarRecords();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
-      );
-    }
+    await Provider.of<DatabaseService>(context, listen: false)
+        .deleteSugarRecord(id);
   }
 
   void _clearForm() {
     _dateController.clear();
     _timeController.clear();
     _sugarValueController.clear();
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   /* -------------------- UI -------------------- */
@@ -1000,10 +1010,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         final Set<int> selectedRecordIds = {};
         bool selectAll = false;
 
-        // Use a StatefulWidget for the dialog content to manage checkbox state
         return StatefulBuilder(
           builder: (context, setState) {
-
             // Helper to build a list tile for a record
             Widget buildRecordTile(SugarRecord record) {
               final dt = DateTime(
@@ -1024,33 +1032,33 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 ),
                 onTap: isEditing
                     ? () {
-                  Navigator.of(context).pop(); // Close selection dialog
-                  _showFormDialog(editing: record); // Open edit form
-                }
+                        Navigator.of(context).pop(); // Close selection dialog
+                        _showFormDialog(editing: record); // Open edit form
+                      }
                     : () {
-                  // Toggle selection for delete
-                  setState(() {
-                    if (isSelected) {
-                      selectedRecordIds.remove(record.id);
-                    } else {
-                      selectedRecordIds.add(record.id!);
-                    }
-                  });
-                },
+                        // Toggle selection for delete
+                        setState(() {
+                          if (isSelected) {
+                            selectedRecordIds.remove(record.id);
+                          } else {
+                            selectedRecordIds.add(record.id!);
+                          }
+                        });
+                      },
                 trailing: isEditing
                     ? const Icon(Icons.edit)
                     : Checkbox(
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value == true) {
-                        selectedRecordIds.add(record.id!);
-                      } else {
-                        selectedRecordIds.remove(record.id);
-                      }
-                    });
-                  },
-                ),
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedRecordIds.add(record.id!);
+                            } else {
+                              selectedRecordIds.remove(record.id);
+                            }
+                          });
+                        },
+                      ),
               );
             }
 
@@ -1090,12 +1098,22 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     child: const Text('Delete Selected'),
                     onPressed: selectedRecordIds.isEmpty
                         ? null // Disable if nothing is selected
-                        : () {
-                      Navigator.of(context).pop(); // Close dialog
-                      for (final id in selectedRecordIds) {
-                        _deleteRecord(id);
-                      }
-                    },
+                        : () async {
+                            final int recordsToDeleteCount = selectedRecordIds.length;
+                            Navigator.of(context).pop(); // Close dialog first
+                            try {
+                              for (final id in selectedRecordIds) {
+                                await _deleteRecord(id);
+                              }
+                              _fetchSugarRecords(); // Fetch records after all deletions
+                              _showSuccessSnackBar(
+                                  '$recordsToDeleteCount record(s) deleted successfully.');
+                            } catch (e) {
+                              _showErrorSnackBar(
+                                  'Failed to delete one or more records. Please try again.');
+                              _fetchSugarRecords(); // Also fetch here to show what was deleted before the error
+                            }
+                          },
                   ),
               ],
             );
