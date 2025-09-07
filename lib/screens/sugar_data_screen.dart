@@ -722,24 +722,28 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         ),
         const SizedBox(height: 16),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ElevatedButton.icon(
-              onPressed: _filter,
-              icon: const Icon(Icons.search),
-              label: const Text('Search'),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _filter,
+                icon: const Icon(Icons.search),
+                label: const Text('Search'),
+              ),
             ),
-            ElevatedButton.icon(
-              onPressed: () {
-                _searchStartDateController.clear();
-                _searchEndDateController.clear();
-                setState(() {
-                  _searchMealType = null;
-                });
-                _filter(); // This will reset the view to DisplayMode.all
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reset'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _searchStartDateController.clear();
+                  _searchEndDateController.clear();
+                  setState(() {
+                    _searchMealType = null;
+                  });
+                  _filter(); // This will reset the view to DisplayMode.all
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reset'),
+              ),
             ),
           ],
         ),
@@ -753,6 +757,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 onPressed: () {
                   setState(() => _displayMode = DisplayMode.top20Low);
                   _updateDisplayedRecords();
+                  _showSuccessSnackBar('Displaying Top 20 Low Records.');
                 },
                 child: const Text('Top 20 Low'),
               ),
@@ -763,6 +768,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 onPressed: () {
                   setState(() => _displayMode = DisplayMode.top20High);
                   _updateDisplayedRecords();
+                  _showSuccessSnackBar('Displaying Top 20 High Records.');
                 },
                 child: const Text('Top 20 High'),
               ),

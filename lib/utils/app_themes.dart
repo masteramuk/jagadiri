@@ -12,15 +12,22 @@ class AppThemes {
   );
 
   // Common button theme
-  static ElevatedButtonThemeData _elevatedButtonTheme(Color color) =>
-      ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      );
+  static ElevatedButtonThemeData _elevatedButtonTheme(Color backgroundColor, {Color? foregroundColor}) {
+    // Determine the best foreground color based on the background's brightness
+    final Color effectiveForegroundColor = foregroundColor ??
+        (ThemeData.estimateBrightnessForColor(backgroundColor) == Brightness.dark
+            ? Colors.white
+            : Colors.black);
+
+    return ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: effectiveForegroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   // Common text theme based on text color
   static TextTheme _textTheme(Color primaryColor, {Color? secondaryColor}) {
@@ -37,15 +44,25 @@ class AppThemes {
   // Common bottom nav theme
   static BottomNavigationBarThemeData _bottomNavTheme({
     required Color backgroundColor,
-    required Color selectedItemColor,
-    required Color unselectedItemColor,
-  }) =>
-      BottomNavigationBarThemeData(
-        backgroundColor: backgroundColor,
-        selectedItemColor: selectedItemColor,
-        unselectedItemColor: unselectedItemColor,
-        type: BottomNavigationBarType.fixed,
-      );
+    Color? selectedItemColor,
+    Color? unselectedItemColor,
+  }) {
+    final bool isDarkBackground =
+        ThemeData.estimateBrightnessForColor(backgroundColor) == Brightness.dark;
+
+    // If a specific color isn't provided, calculate a smart one.
+    final Color effectiveSelectedItemColor =
+        selectedItemColor ?? (isDarkBackground ? Colors.white : Colors.black);
+    final Color effectiveUnselectedItemColor =
+        unselectedItemColor ?? (isDarkBackground ? Colors.white70 : Colors.black54);
+
+    return BottomNavigationBarThemeData(
+      backgroundColor: backgroundColor,
+      selectedItemColor: effectiveSelectedItemColor,
+      unselectedItemColor: effectiveUnselectedItemColor,
+      type: BottomNavigationBarType.fixed,
+    );
+  }
 
   // Common app bar theme
   static AppBarTheme _appBarTheme({
@@ -106,11 +123,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.black),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.blueAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.blue,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.blue.shade100,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.blue),
           );
 
         case 'Dark':
@@ -128,11 +141,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.white, secondaryColor: Colors.white70),
             cardTheme: _cardTheme(Colors.grey.shade800),
             buttonTheme: _elevatedButtonTheme(Colors.blueGrey.shade600),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.blueGrey.shade900,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.blueGrey.shade900),
           );
 
         case 'Ocean':
@@ -147,19 +156,8 @@ class AppThemes {
             ),
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
-            buttonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.tealAccent,
-                foregroundColor: Colors.black87, // Set font color to black
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.cyan.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            buttonTheme: _elevatedButtonTheme(Colors.tealAccent),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.cyan.shade800),
           );
 
         case 'Green':
@@ -175,11 +173,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.lightGreenAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.green.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.green.shade800),
           );
 
         case 'Orange':
@@ -195,11 +189,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.deepOrangeAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.orange.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.orange.shade800),
           );
 
         case 'Grass':
@@ -217,8 +207,7 @@ class AppThemes {
             buttonTheme: _elevatedButtonTheme(Colors.limeAccent),
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.lightGreen.shade800,
-              selectedItemColor: Colors.black,
-              unselectedItemColor: Colors.white60,
+              selectedItemColor: Colors.black, // Keep explicit override for design
             ),
           );
 
@@ -235,11 +224,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.deepPurpleAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.purple.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.purple.shade800),
           );
 
         case 'Funky':
@@ -255,11 +240,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.pinkAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.pink.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.pink.shade800),
           );
 
         case 'High Contrast':
@@ -311,11 +292,7 @@ class AppThemes {
             textTheme: _textTheme(Colors.pink.shade900, secondaryColor: Colors.pink.shade800),
             cardTheme: _cardTheme(Colors.pink.shade100),
             buttonTheme: _elevatedButtonTheme(Colors.purpleAccent),
-            bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.pink.shade800,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white60,
-            ),
+            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.pink.shade800),
           );
 
         default:
