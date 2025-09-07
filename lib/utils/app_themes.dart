@@ -123,7 +123,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.blueAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.blue),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'Dark':
@@ -157,7 +161,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.tealAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.cyan.shade800),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'Green':
@@ -173,7 +181,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.lightGreenAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.green.shade800),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'Orange':
@@ -189,7 +201,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.deepOrangeAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.orange.shade800),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'Grass':
@@ -206,8 +222,9 @@ class AppThemes {
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.limeAccent),
             bottomNavTheme: _bottomNavTheme(
-              backgroundColor: Colors.lightGreen.shade800,
-              selectedItemColor: Colors.black, // Keep explicit override for design
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
             ),
           );
 
@@ -224,7 +241,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.deepPurpleAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.purple.shade800),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'Funky':
@@ -240,7 +261,11 @@ class AppThemes {
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
             buttonTheme: _elevatedButtonTheme(Colors.pinkAccent),
-            bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.pink.shade800),
+            bottomNavTheme: _bottomNavTheme(
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.black87,
+              unselectedItemColor: Colors.black54,
+            ),
           );
 
         case 'High Contrast':
