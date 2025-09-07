@@ -664,10 +664,13 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     initialValue: _searchMealType,
                     hint: const Text('All Meal Types'),
                     items: MealType.values
+                        .where((type) =>
+                            type != MealType.midMorningSnack &&
+                            type != MealType.midAfternoonSnack)
                         .map((e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(_formatMealType(e.name)),
-                    ))
+                              value: e,
+                              child: Text(_formatMealType(e.name)),
+                            ))
                         .toList(),
                     onChanged: (val) {
                       setState(() => _searchMealType = val);
@@ -727,6 +730,9 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   }
 
   Widget _recordsTable(ThemeData theme, Map<DateTime, List<SugarRecord>> groupedByDate, List<DateTime> sortedDates) {
+    final displayedMealTypes = MealType.values.where((type) =>
+    type != MealType.midMorningSnack && type != MealType.midAfternoonSnack).toList();
+
     final paginatedDates = sortedDates
         .skip(_currentPage * _rowsPerPage)
         .take(_rowsPerPage)
@@ -749,11 +755,9 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final List<double> columnWidths = [
       80.0, // Date
       80.0, // Time
-      // 7 Meal Types * 2 columns each (Before/After)
+      // 5 Meal Types * 2 columns each (Before/After)
       60.0, 60.0, // Breakfast
-      60.0, 60.0, // Mid Morning Snack
       60.0, 60.0, // Lunch
-      60.0, 60.0, // Afternoon Snack
       60.0, 60.0, // Dinner
       60.0, 60.0, // Evening Snack
       60.0, 60.0, // Before Bed
@@ -798,14 +802,14 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 children: [
                   headerCell('Date', columnWidths[0]),
                   headerCell('Time', columnWidths[1]),
-                  ...MealType.values.map((type) {
+                  ...displayedMealTypes.map((type) {
                     final width = columnWidths[mealTypeStartIndex] + columnWidths[mealTypeStartIndex + 1];
                     final widget = headerCell(formatHeader(type.name), width);
                     mealTypeStartIndex += 2;
                     return widget;
                   }),
-                  headerCell('Status', columnWidths[16]),
-                  headerCell('Actions', columnWidths[17]),
+                  headerCell('Status', columnWidths[12]),
+                  headerCell('Actions', columnWidths[13]),
                 ],
               ),
             ),
@@ -813,7 +817,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             Row(
               children: [
                 Container(width: columnWidths[0] + columnWidths[1]), // Date & Time placeholder
-                ...List.generate(7, (index) {
+                ...List.generate(displayedMealTypes.length, (index) {
                   final baseIndex = 2 + (index * 2);
                   return Row(
                     children: [
@@ -822,7 +826,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     ],
                   );
                 }),
-                Container(width: columnWidths[16] + columnWidths[17]), // Status & Actions placeholder
+                Container(width: columnWidths[12] + columnWidths[13]), // Status & Actions placeholder
               ],
             ),
           ],
@@ -856,8 +860,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
             children: [
               dataCell(Text(DateFormat('dd-MMM-yy').format(date)), columnWidths[0]),
               dataCell(Text(timesString), columnWidths[1]),
-              ...MealType.values.expand((type) {
-                int index = MealType.values.indexOf(type) * 2 + 2;
+              ...displayedMealTypes.expand((type) {
+                int index = displayedMealTypes.indexOf(type) * 2 + 2;
                 final beforeRecord = recordsMap['${type.name}_${MealTimeCategory.before.name}'];
                 final afterRecord = recordsMap['${type.name}_${MealTimeCategory.after.name}'];
                 return [
@@ -875,7 +879,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     return snapshot.data ?? const SizedBox.shrink();
                   },
                 ),
-                columnWidths[16],
+                columnWidths[12],
               ),
               dataCell(
                 Row(
@@ -886,7 +890,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                     IconButton(icon: const Icon(Icons.delete), iconSize: 20, tooltip: 'Delete all records for this date', onPressed: () => _showDeleteConfirmation(date, records)),
                   ],
                 ),
-                columnWidths[17],
+                columnWidths[13],
               ),
             ],
           ),
@@ -1089,7 +1093,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 DropdownButtonFormField<MealType>(
                   initialValue: type,
                   items: MealType.values
-                      .map((e) => DropdownMenuItem(value: e, child: Text(_formatMealType(e.name))))
+                      .where((t) =>
+                          t != MealType.midMorningSnack &&
+                          t != MealType.midAfternoonSnack)
+                      .map((e) => DropdownMenuItem(
+                          value: e, child: Text(_formatMealType(e.name))))
                       .toList(),
                   onChanged: (v) => setState2(() => type = v),
                   decoration: const InputDecoration(labelText: 'Meal Type'),
