@@ -996,11 +996,13 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        // State variables for the dialog
+        final Set<int> selectedRecordIds = {};
+        bool selectAll = false;
+
         // Use a StatefulWidget for the dialog content to manage checkbox state
         return StatefulBuilder(
           builder: (context, setState) {
-            final Set<int> selectedRecordIds = {};
-            bool selectAll = false;
 
             // Helper to build a list tile for a record
             Widget buildRecordTile(SugarRecord record) {
