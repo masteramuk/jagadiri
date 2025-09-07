@@ -164,16 +164,27 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
       _currentPage = 0;
       switch (_displayMode) {
         case DisplayMode.all:
-          _currentlyDisplayedRecords = List.from(_filteredSugarRecords);
+          // _filteredSugarRecords is already sorted by date descending
+          _currentlyDisplayedRecords = _filteredSugarRecords;
           break;
         case DisplayMode.top20Low:
-          final sorted = List<SugarRecord>.from(_filteredSugarRecords)
-            ..sort((a, b) => a.value.compareTo(b.value));
+          // Create a new sorted list from ALL records, ignoring filters
+          final sorted = List<SugarRecord>.from(_sugarRecords)
+            ..sort((a, b) {
+              final valueComparison = a.value.compareTo(b.value);
+              if (valueComparison != 0) return valueComparison;
+              return b.date.compareTo(a.date); // Secondary sort: latest first
+            });
           _currentlyDisplayedRecords = sorted.take(20).toList();
           break;
         case DisplayMode.top20High:
-          final sorted = List<SugarRecord>.from(_filteredSugarRecords)
-            ..sort((a, b) => b.value.compareTo(a.value));
+          // Create a new sorted list from ALL records, ignoring filters
+          final sorted = List<SugarRecord>.from(_sugarRecords)
+            ..sort((a, b) {
+              final valueComparison = b.value.compareTo(a.value);
+              if (valueComparison != 0) return valueComparison;
+              return b.date.compareTo(a.date); // Secondary sort: latest first
+            });
           _currentlyDisplayedRecords = sorted.take(20).toList();
           break;
       }
@@ -736,21 +747,25 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         const Divider(),
         const SizedBox(height: 8),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            ElevatedButton(
-              onPressed: () {
-                setState(() => _displayMode = DisplayMode.top20Low);
-                _updateDisplayedRecords();
-              },
-              child: const Text('Top 20 Low'),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() => _displayMode = DisplayMode.top20Low);
+                  _updateDisplayedRecords();
+                },
+                child: const Text('Top 20 Low'),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() => _displayMode = DisplayMode.top20High);
-                _updateDisplayedRecords();
-              },
-              child: const Text('Top 20 High'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() => _displayMode = DisplayMode.top20High);
+                  _updateDisplayedRecords();
+                },
+                child: const Text('Top 20 High'),
+              ),
             ),
           ],
         ),
@@ -821,7 +836,10 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     Widget buildHeader() {
       int mealTypeStartIndex = 2; // Index after Date and Time
       return Container(
-        color: theme.primaryColor,
+        decoration: BoxDecoration( // Bolder bottom border for header
+          color: theme.primaryColor,
+          border: Border(bottom: BorderSide(color: theme.primaryColorDark, width: 2.0)),
+        ),
         child: Column(
           children: [
             // --- Top Header Row ---
@@ -864,7 +882,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     }
 
     // --- Custom Data Row Builder ---
-    Widget buildDataRow(DateTime date, List<SugarRecord> records) {
+    Widget buildDataRow(DateTime date, List<SugarRecord> records, int rowIndex) {
       final timesString = records.length > 1 ? '-' : records.first.time.format(context);
       final recordsMap = {for (var r in records) '${r.mealType.name}_${r.mealTimeCategory.name}': r};
 
@@ -881,6 +899,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
       return Container(
         decoration: BoxDecoration(
+          color: rowIndex.isEven ? Colors.grey.withOpacity(0.1) : null, // Alternating row color
           border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
         ),
         child: IntrinsicHeight(
@@ -950,7 +969,11 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         child: Column(
           children: [
             buildHeader(),
-            ...paginatedDates.map((date) => buildDataRow(date, groupedByDate[date]!)),
+            ...paginatedDates.asMap().entries.map((entry) {
+              final index = entry.key;
+              final date = entry.value;
+              return buildDataRow(date, groupedByDate[date]!, index);
+            }),
           ],
         ),
       ),
