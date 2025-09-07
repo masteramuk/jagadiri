@@ -18,10 +18,14 @@ class SugarDataScreen extends StatefulWidget {
   State<SugarDataScreen> createState() => _SugarDataScreenState();
 }
 
+enum DisplayMode { all, top20Low, top20High }
+
 class _SugarDataScreenState extends State<SugarDataScreen> {
   /* -------------------- State -------------------- */
   List<SugarRecord> _sugarRecords = [];
   List<SugarRecord> _filteredSugarRecords = [];
+  List<SugarRecord> _currentlyDisplayedRecords = []; // <-- NEW: Source for table
+  DisplayMode _displayMode = DisplayMode.all; // <-- NEW
   bool _isLoading = true;
   late String _currentUnit;
   bool _isLatestCardExpanded = false;
@@ -107,6 +111,8 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
     final db = Provider.of<DatabaseService>(context, listen: false);
     try {
       _sugarRecords = await db.getSugarRecords();
+      // Ensure records are always sorted by date descending by default
+      _sugarRecords.sort((a, b) => b.date.compareTo(a.date));
       _currentUnit = await db.getSetting('measurementUnit') ?? 'Metric';
       _buildPreviousMap();
       _filter();
@@ -129,6 +135,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
   /* -------------------- Filtering -------------------- */
   void _filter() {
     setState(() {
+      _displayMode = DisplayMode.all; // Reset to default view on new filter
       _currentPage = 0;
       _filteredSugarRecords = _sugarRecords.where((rec) {
         final d = rec.date;
@@ -146,6 +153,30 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         }
         return true;
       }).toList();
+    });
+    _updateDisplayedRecords(); // Update the table content
+  }
+
+  /* -------------------- Display Logic -------------------- */
+  void _updateDisplayedRecords() {
+    setState(() {
+      // Always reset pagination when the view changes
+      _currentPage = 0;
+      switch (_displayMode) {
+        case DisplayMode.all:
+          _currentlyDisplayedRecords = List.from(_filteredSugarRecords);
+          break;
+        case DisplayMode.top20Low:
+          final sorted = List<SugarRecord>.from(_filteredSugarRecords)
+            ..sort((a, b) => a.value.compareTo(b.value));
+          _currentlyDisplayedRecords = sorted.take(20).toList();
+          break;
+        case DisplayMode.top20High:
+          final sorted = List<SugarRecord>.from(_filteredSugarRecords)
+            ..sort((a, b) => b.value.compareTo(a.value));
+          _currentlyDisplayedRecords = sorted.take(20).toList();
+          break;
+      }
     });
   }
 
@@ -276,7 +307,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
 
     // Group records by date to calculate total rows for pagination
     final groupedByDate = groupBy(
-      _filteredSugarRecords,
+      _currentlyDisplayedRecords, // <-- Use the new display list
           (SugarRecord r) => DateTime(r.date.year, r.date.month, r.date.day),
     );
     final sortedDates = groupedByDate.keys.toList()
@@ -662,78 +693,66 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // Use a breakpoint to decide which button style to use
-            bool useIconButtons = constraints.maxWidth < 400;
-
-            return Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<MealType>(
-                    initialValue: _searchMealType,
-                    hint: const Text('All Meal Types'),
-                    items: MealType.values
-                        .where((type) =>
-                            type != MealType.midMorningSnack &&
-                            type != MealType.midAfternoonSnack)
-                        .map((e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(_formatMealType(e.name)),
-                            ))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() => _searchMealType = val);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (useIconButtons) ...[
-                  Tooltip(
-                    message: 'Search',
-                    child: ElevatedButton(
-                      onPressed: _filter,
-                      child: const Icon(Icons.search),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Reset',
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _searchStartDateController.clear();
-                        _searchEndDateController.clear();
-                        setState(() {
-                          _searchMealType = null;
-                        });
-                        _filter();
-                      },
-                      child: const Icon(Icons.refresh),
-                    ),
-                  ),
-                ] else ...[
-                  ElevatedButton.icon(
-                    onPressed: _filter,
-                    icon: const Icon(Icons.search),
-                    label: const Text('Search'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _searchStartDateController.clear();
-                      _searchEndDateController.clear();
-                      setState(() {
-                        _searchMealType = null;
-                      });
-                      _filter();
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reset'),
-                  ),
-                ],
-              ],
-            );
+        DropdownButtonFormField<MealType>(
+          value: _searchMealType,
+          hint: const Text('All Meal Types'),
+          items: MealType.values
+              .where((type) =>
+                  type != MealType.midMorningSnack &&
+                  type != MealType.midAfternoonSnack)
+              .map((e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(_formatMealType(e.name)),
+                  ))
+              .toList(),
+          onChanged: (val) {
+            setState(() => _searchMealType = val);
           },
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _filter,
+              icon: const Icon(Icons.search),
+              label: const Text('Search'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                _searchStartDateController.clear();
+                _searchEndDateController.clear();
+                setState(() {
+                  _searchMealType = null;
+                });
+                _filter(); // This will reset the view to DisplayMode.all
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reset'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Divider(),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() => _displayMode = DisplayMode.top20Low);
+                _updateDisplayedRecords();
+              },
+              child: const Text('Top 20 Low'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() => _displayMode = DisplayMode.top20High);
+                _updateDisplayedRecords();
+              },
+              child: const Text('Top 20 High'),
+            ),
+          ],
         ),
       ],
     );
