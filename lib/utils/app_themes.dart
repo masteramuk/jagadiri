@@ -147,7 +147,14 @@ class AppThemes {
             ),
             textTheme: _textTheme(Colors.black87),
             cardTheme: _cardTheme(Colors.white),
-            buttonTheme: _elevatedButtonTheme(Colors.tealAccent),
+            buttonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.tealAccent,
+                foregroundColor: Colors.black87, // Set font color to black
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             bottomNavTheme: _bottomNavTheme(
               backgroundColor: Colors.cyan.shade800,
               selectedItemColor: Colors.white,
