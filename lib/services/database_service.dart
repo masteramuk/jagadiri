@@ -272,6 +272,17 @@ class DatabaseService {
     return maps.map((e) => BPRecord.fromDbMap(e)).toList();
   }
 
+  Future<int> updateBPRecord(BPRecord record) async {
+    final db = await database;
+    return await db.update('bp_records', record.toDbMap(),
+        where: 'id = ?', whereArgs: [record.id]);
+  }
+
+  Future<int> deleteBPRecord(int id) async {
+    final db = await database;
+    return await db.delete('bp_records', where: 'id = ?', whereArgs: [id]);
+  }
+
   // === User Profile Operations ===
   Future<int> insertUserProfile(UserProfile profile) async {
     final db = await database;
