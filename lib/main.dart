@@ -9,6 +9,9 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+import 'package:jagadiri/screens/bp_data_screen.dart';
+import 'package:jagadiri/screens/sugar_data_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -46,7 +49,8 @@ class MyApp extends StatelessWidget {
       theme: themeProvider.currentTheme,
       home: HomeScreen(),
       routes: {
-        // No specific routes needed as settings are consolidated
+        '/sugar': (context) => const SugarDataScreen(),
+        '/bp': (context) => const BPDataScreen(),
       },
     );
   }
