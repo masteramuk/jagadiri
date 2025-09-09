@@ -597,24 +597,26 @@ class _BPDataScreenState extends State<BPDataScreen> {
         columns: const [
           DataColumn(label: Text('Date')),
           DataColumn(label: Text('Time')),
-          DataColumn(label: Text('Time Name')),
           DataColumn(label: Text('Systolic')),
           DataColumn(label: Text('Diastolic')),
           DataColumn(label: Text('Pulse')),
           DataColumn(label: Text('Status')),
+          DataColumn(label: Text('Trend')),
           DataColumn(label: Text('Actions')),
         ],
         rows: paginatedDates.expand((date) {
           final records = groupedByDate[date]!;
-          return records.map((record) {
+          return List.generate(records.length, (i) {
+            final record = records[i];
+            final prev = i > 0 ? records[i - 1] : null;
             return DataRow(cells: [
               DataCell(Text(DateFormat('dd-MMM-yy').format(record.date))),
               DataCell(Text(record.time.format(context))),
-              DataCell(Text(_formatTimeName(record.timeName.name))),
               DataCell(Text(record.systolic.toString())),
               DataCell(Text(record.diastolic.toString())),
               DataCell(Text(record.pulseRate.toString())),
-              DataCell(_buildStatusChip(record.status)),
+              DataCell(_buildStatusIcon(record.status)),
+              DataCell(_buildTrendIcon(record, prev)),
               DataCell(Row(
                 children: [
                   IconButton(
@@ -634,28 +636,27 @@ class _BPDataScreenState extends State<BPDataScreen> {
     );
   }
 
-  Widget _buildStatusChip(BPStatus status) {
-    Color color;
-    String label;
-    switch (status) {
-      case BPStatus.good:
-        color = Colors.green;
-        label = 'Good';
-        break;
-      case BPStatus.normal:
-        color = Colors.orange;
-        label = 'Normal';
-        break;
-      case BPStatus.bad:
-        color = Colors.red;
-        label = 'Bad';
-        break;
+  Widget _buildStatusIcon(BPStatus status) {
+    if (status == BPStatus.good) {
+      return const Icon(Icons.favorite, color: Colors.green, size: 24);
+    } else {
+      return const Icon(Icons.favorite, color: Colors.red, size: 24);
     }
-    return Chip(
-      label: Text(label),
-      backgroundColor: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
-      labelStyle: TextStyle(color: color),
-    );
+  }
+
+  Widget _buildTrendIcon(BPRecord current, BPRecord? previous) {
+    if (previous == null) {
+      return const Icon(Icons.trending_flat, color: Colors.grey, size: 20);
+    }
+    final isImproving = (current.systolic < previous.systolic && current.diastolic < previous.diastolic);
+    final isDeteriorating = (current.systolic > previous.systolic && current.diastolic > previous.diastolic);
+    if (isImproving) {
+      return const Icon(Icons.trending_down, color: Colors.green, size: 20);
+    } else if (isDeteriorating) {
+      return const Icon(Icons.trending_up, color: Colors.red, size: 20);
+    } else {
+      return const Icon(Icons.trending_flat, color: Colors.grey, size: 20);
+    }
   }
 
   void _showDeleteConfirmation(int id) {
@@ -728,8 +729,6 @@ class _BPDataScreenState extends State<BPDataScreen> {
       _pulseRateController.text = editing.pulseRate.toString();
     }
 
-    BPTimeName? timeName = editing?.timeName ?? BPTimeName.morning;
-
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -769,31 +768,41 @@ class _BPDataScreenState extends State<BPDataScreen> {
                       labelText: 'Time', suffixIcon: Icon(Icons.access_time)),
                   onTap: editing == null ? _pickTime : null,
                 ),
-                DropdownButtonFormField<BPTimeName>(
-                  value: timeName,
-                  items: BPTimeName.values
-                      .map((e) => DropdownMenuItem(value: e, child: Text(_formatTimeName(e.name))))
-                      .toList(),
-                  onChanged: (v) => setState2(() => timeName = v),
-                  decoration: const InputDecoration(labelText: 'Time Name'),
-                ),
                 TextFormField(
                   controller: _systolicController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Systolic (mmHg)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter systolic';
+                    final v = int.tryParse(value);
+                    if (v == null || v < 50 || v > 250) return 'Enter valid systolic (50-250)';
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _diastolicController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Diastolic (mmHg)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter diastolic';
+                    final v = int.tryParse(value);
+                    if (v == null || v < 30 || v > 150) return 'Enter valid diastolic (30-150)';
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _pulseRateController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'Pulse Rate (bpm)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter pulse rate';
+                    final v = int.tryParse(value);
+                    if (v == null || v < 30 || v > 220) return 'Enter valid pulse (30-220)';
+                    return null;
+                  },
                 ),
               ],
             ),
@@ -802,12 +811,26 @@ class _BPDataScreenState extends State<BPDataScreen> {
             TextButton(
                 onPressed: Navigator.of(context).pop, child: const Text('Cancel')),
             ElevatedButton(
-              onPressed: () => _saveRecord(timeName, editing),
+              onPressed: () {
+                // Automatically set timeName based on selected time
+                final time = TimeOfDay.fromDateTime(
+                    DateFormat('hh:mm a').parse(_timeController.text));
+                BPTimeName timeName = _getTimeNameFromTime(time);
+                _saveRecord(timeName, editing);
+              },
               child: const Text('Save'),
             ),
           ],
         ),
       ),
     );
+  }
+
+  BPTimeName _getTimeNameFromTime(TimeOfDay time) {
+    final hour = time.hour;
+    if (hour >= 5 && hour < 12) return BPTimeName.morning;
+    if (hour >= 12 && hour < 17) return BPTimeName.afternoon;
+    if (hour >= 17 && hour < 21) return BPTimeName.evening;
+    return BPTimeName.night;
   }
 }
