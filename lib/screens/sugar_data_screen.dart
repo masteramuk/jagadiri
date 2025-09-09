@@ -8,7 +8,6 @@ import 'package:jagadiri/models/sugar_reference.dart';
 import 'package:jagadiri/models/user_profile.dart';
 import 'package:collection/collection.dart';
 
-import 'package:jagadiri/providers/user_profile_provider.dart';
 import 'package:jagadiri/utils/sugar_analysis.dart';
 
 class SugarDataScreen extends StatefulWidget {
@@ -1132,7 +1131,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                           });
                         },
                       ),
-                    ...records.map(buildRecordTile).toList(),
+                    ...records.map(buildRecordTile),
                   ],
                 ),
               ),

@@ -40,6 +40,4 @@ CREATE TABLE bp_records(
       ''');
 
   await db.close();
-
-  print('Database created at $path');
 }
