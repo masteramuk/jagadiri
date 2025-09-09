@@ -1,6 +1,6 @@
 class UnitConverter {
   // Conversion factor for glucose (mmol/L to mg/dL)
-  static const double GLUCOSE_CONVERSION_FACTOR = 18.018;
+  static const double glucoseConversionFactor = 18.018;
 
   /// Convert height between Metric (cm) and US (inches)
   static double convertHeight(double value, String fromUnit, String toUnit) {
@@ -30,12 +30,12 @@ class UnitConverter {
 
   /// Convert blood sugar from mmol/L to mg/dL
   static double mmolToMgPerDl(double mmol) {
-    return mmol * GLUCOSE_CONVERSION_FACTOR;
+    return mmol * glucoseConversionFactor;
   }
 
   /// Convert blood sugar from mg/dL to mmol/L
   static double mgPerDlToMmol(double mg) {
-    return mg / GLUCOSE_CONVERSION_FACTOR;
+    return mg / glucoseConversionFactor;
   }
 
   /// Convert blood sugar between units

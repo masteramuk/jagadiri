@@ -126,9 +126,11 @@ class _EditSugarReferenceScreenState extends State<EditSugarReferenceScreen> {
           );
           DatabaseService().updateSugarRef(updatedRef);
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Changes saved successfully')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Changes saved successfully')),
+          );
+        }
       });
     }
   }

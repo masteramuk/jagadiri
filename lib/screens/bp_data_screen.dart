@@ -653,7 +653,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
     }
     return Chip(
       label: Text(label),
-      backgroundColor: color.withOpacity(0.2),
+      backgroundColor: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
       labelStyle: TextStyle(color: color),
     );
   }

@@ -72,11 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Calculate metrics for BP
     final allSystolicValues = _bpRecords.map((record) => record.systolic).toList();
     final allDiastolicValues = _bpRecords.map((record) => record.diastolic).toList();
-    final bpSystolicMax = allSystolicValues.isNotEmpty ? allSystolicValues.reduce(max) : 0;
-    final bpSystolicMin = allSystolicValues.isNotEmpty ? allSystolicValues.reduce(min) : 0;
     final bpSystolicAvg = _calculateIntAverage(allSystolicValues);
-    final bpDiastolicMax = allDiastolicValues.isNotEmpty ? allDiastolicValues.reduce(max) : 0;
-    final bpDiastolicMin = allDiastolicValues.isNotEmpty ? allDiastolicValues.reduce(min) : 0;
     final bpDiastolicAvg = _calculateIntAverage(allDiastolicValues);
     final bpTrend = (bpSystolicAvg > 130 || bpDiastolicAvg > 85) ? 'Deteriorating' : 'Improving'; // Simple dummy logic
 
