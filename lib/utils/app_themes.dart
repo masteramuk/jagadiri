@@ -102,6 +102,11 @@ class AppThemes {
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        titleTextStyle: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+      ),
       // Removed: brightness → now fully controlled by colorScheme
     );
   }
@@ -304,8 +309,8 @@ class AppThemes {
               onPrimary: Colors.white,
               secondary: Colors.purpleAccent,
               onSecondary: Colors.white,
-              surface: Colors.pink,
-              onSurface: Colors.white,
+              surface: Colors.white, // Changed from Colors.pink
+              onSurface: Colors.black, // Changed from Colors.white
               error: Colors.red,
               onError: Colors.white,
             ),
@@ -314,7 +319,7 @@ class AppThemes {
               backgroundColor: Colors.pinkAccent,
               foregroundColor: Colors.white,
             ),
-            textTheme: _textTheme(Colors.pink.shade900, secondaryColor: Colors.pink.shade800),
+            textTheme: _textTheme(Colors.black, secondaryColor: Colors.black87),
             cardTheme: _cardTheme(Colors.pink.shade100),
             buttonTheme: _elevatedButtonTheme(Colors.purpleAccent),
             bottomNavTheme: _bottomNavTheme(backgroundColor: Colors.pink.shade800),
