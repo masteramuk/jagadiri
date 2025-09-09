@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 enum BPStatus {
-  good,
+  excellent,
   normal,
+  borderline,
   bad,
+  worst,
 }
 
 enum BPTimeName {
@@ -93,25 +95,5 @@ class BPRecord {
     };
   }
 
-  static BPStatus calculateBPStatus(int systolic, int diastolic, int pulseRate) {
-    // Clinical ranges (illustrative, consult medical guidelines for accuracy)
-    // Normal: <120/80
-    // Elevated: 120-129/<80
-    // Hypertension Stage 1: 130-139 or 80-89
-    // Hypertension Stage 2: >=140 or >=90
-    // Hypertensive Crisis: >180 and/or >120
-
-    if (systolic >= 180 || diastolic >= 120) {
-      return BPStatus.bad; // Hypertensive Crisis
-    } else if (systolic >= 140 || diastolic >= 90) {
-      return BPStatus.bad; // Hypertension Stage 2
-    } else if ((systolic >= 130 && systolic <= 139) || (diastolic >= 80 && diastolic <= 89)) {
-      return BPStatus.normal; // Hypertension Stage 1
-    } else if (systolic >= 120 && systolic <= 129 && diastolic < 80) {
-      return BPStatus.normal; // Elevated
-    } else if (systolic < 120 && diastolic < 80) {
-      return BPStatus.good; // Normal
-    }
-    return BPStatus.normal; // Default for cases not explicitly covered
-  }
+  
 }

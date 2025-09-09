@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:jagadiri/models/bp_record.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:collection/collection.dart';
+import 'package:jagadiri/models/user_profile.dart';
+import 'package:jagadiri/providers/user_profile_provider.dart';
 
 class BPDataScreen extends StatefulWidget {
   const BPDataScreen({super.key});
@@ -169,7 +171,10 @@ class _BPDataScreenState extends State<BPDataScreen> {
     final diastolic = int.tryParse(_diastolicController.text) ?? 0;
     final pulseRate = int.tryParse(_pulseRateController.text) ?? 0;
 
-    final status = BPRecord.calculateBPStatus(systolic, diastolic, pulseRate);
+    final userProfile = Provider.of<UserProfileProvider>(context, listen: false).userProfile;
+    final age = userProfile != null ? DateTime.now().year - userProfile.dob.year : 0;
+
+    final status = _calculateBPStatus(systolic, diastolic, age);
 
     final record = BPRecord(
       id: editing?.id,
@@ -331,6 +336,23 @@ class _BPDataScreenState extends State<BPDataScreen> {
     return result[0].toUpperCase() + result.substring(1);
   }
 
+  BPStatus _calculateBPStatus(int systolic, int diastolic, int age) {
+    if (age >= 18 && age <= 65) {
+      if (systolic < 90 || diastolic < 60) return BPStatus.bad;
+      if (systolic >= 90 && systolic <= 120 && diastolic >= 60 && diastolic <= 80) return BPStatus.excellent;
+      if (systolic > 120 && systolic <= 130 && diastolic >= 60 && diastolic <= 80) return BPStatus.normal;
+      if (systolic > 130 && systolic <= 140 && diastolic >= 80 && diastolic <= 90) return BPStatus.borderline;
+      if (systolic > 140 || diastolic > 90) return BPStatus.bad;
+    } else if (age > 65) {
+      if (systolic < 90 || diastolic < 60) return BPStatus.bad;
+      if (systolic >= 90 && systolic <= 130 && diastolic >= 60 && diastolic <= 90) return BPStatus.excellent;
+      if (systolic > 130 && systolic <= 140 && diastolic >= 80 && diastolic <= 90) return BPStatus.normal;
+      if (systolic > 140 && systolic <= 150 && diastolic >= 90 && diastolic <= 95) return BPStatus.borderline;
+      if (systolic > 150 || diastolic > 95) return BPStatus.bad;
+    }
+    return BPStatus.worst;
+  }
+
   /* -------------------- Summary Cards -------------------- */
   Widget _summaryCards() {
     if (_filteredBPRecords.isEmpty) {
@@ -471,14 +493,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              latest.status == BPStatus.good
-                  ? Icons.thumb_up
-                  : Icons.thumb_down,
-              color:
-              latest.status == BPStatus.good ? Colors.green : Colors.red,
-              size: 28,
-            ),
+            _buildStatusIcon(latest.status),
             const SizedBox(height: 8),
             Icon(
               trendIcon,
@@ -637,10 +652,19 @@ class _BPDataScreenState extends State<BPDataScreen> {
   }
 
   Widget _buildStatusIcon(BPStatus status) {
-    if (status == BPStatus.good) {
-      return const Icon(Icons.favorite, color: Colors.green, size: 24);
-    } else {
-      return const Icon(Icons.favorite, color: Colors.red, size: 24);
+    switch (status) {
+      case BPStatus.excellent:
+        return const Icon(Icons.favorite, color: Colors.green, size: 24);
+      case BPStatus.normal:
+        return const Icon(Icons.monitor_heart, color: Colors.blue, size: 24);
+      case BPStatus.borderline:
+        return const Icon(Icons.warning, color: Colors.orange, size: 24);
+      case BPStatus.bad:
+        return const Icon(Icons.thumb_down, color: Colors.red, size: 24);
+      case BPStatus.worst:
+        return const Icon(Icons.bolt, color: Colors.purple, size: 24);
+      default:
+        return const Icon(Icons.help, color: Colors.grey, size: 24);
     }
   }
 
