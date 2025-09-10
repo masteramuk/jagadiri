@@ -704,7 +704,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<MealType>(
-          value: _searchMealType,
+          initialValue: _searchMealType,
           hint: const Text('All Meal Types'),
           items: MealType.values
               .where((type) =>
@@ -1142,7 +1142,6 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                 ),
                 if (!isEditing) // Show "Delete" button only for delete
                   ElevatedButton(
-                    child: const Text('Delete Selected'),
                     onPressed: selectedRecordIds.isEmpty
                         ? null // Disable if nothing is selected
                         : () async {
@@ -1161,6 +1160,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                               _fetchSugarRecords(); // Also fetch here to show what was deleted before the error
                             }
                           },
+                    child: const Text('Delete Selected'),
                   ),
               ],
             );
