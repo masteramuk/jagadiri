@@ -269,12 +269,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
                       });
                     },
                   ),
-                  _buildExpandableCard(
-                    title: 'Top 20',
-                    content: _top20Card(),
-                    isExpanded: true,
-                    onToggle: () {},
-                  ),
+                  
                   _recordsTable(theme, groupedByDate, sortedDates),
                   _pagination(sortedDates.length),
                 ],
@@ -564,14 +559,9 @@ class _BPDataScreenState extends State<BPDataScreen> {
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _top20Card() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        const SizedBox(height: 8),
+        const Divider(),
+        const SizedBox(height: 8),
         const Text('Top 20', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Row(
@@ -582,7 +572,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
                 items: BPStatus.values.map((BPStatus value) {
                   return DropdownMenuItem<BPStatus>(
                     value: value,
-                    child: Text(value.toString().split('.').last),
+                    child: Text(value.toString().split('.').last[0].toUpperCase() + value.toString().split('.').last.substring(1)),
                   );
                 }).toList(),
                 onChanged: (BPStatus? newValue) {
@@ -600,7 +590,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
                     .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value),
+                    child: Text(value[0].toUpperCase() + value.substring(1)),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -624,6 +614,8 @@ class _BPDataScreenState extends State<BPDataScreen> {
       ],
     );
   }
+
+  
 
   Widget _recordsTable(ThemeData theme, Map<DateTime, List<BPRecord>> groupedByDate, List<DateTime> sortedDates) {
     final paginatedDates = sortedDates
