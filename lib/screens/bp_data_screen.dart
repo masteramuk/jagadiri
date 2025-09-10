@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:jagadiri/models/bp_record.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:collection/collection.dart';
-import 'package:jagadiri/models/user_profile.dart';
 import 'package:jagadiri/providers/user_profile_provider.dart';
 
 class BPDataScreen extends StatefulWidget {
@@ -15,7 +14,7 @@ class BPDataScreen extends StatefulWidget {
   State<BPDataScreen> createState() => _BPDataScreenState();
 }
 
-enum DisplayMode { all, top20HighSystolic, top20HighDiastolic }
+enum DisplayMode { all, top20 }
 
 class _BPDataScreenState extends State<BPDataScreen> {
   /* -------------------- State -------------------- */
@@ -23,6 +22,8 @@ class _BPDataScreenState extends State<BPDataScreen> {
   List<BPRecord> _filteredBPRecords = [];
   List<BPRecord> _currentlyDisplayedRecords = [];
   DisplayMode _displayMode = DisplayMode.all;
+  BPStatus? _selectedBPStatus = BPStatus.excellent;
+  String _selectedMeasurement = 'systolic';
   bool _isLoading = true;
   bool _isLatestCardExpanded = false;
   bool _isSearchCardExpanded = false;
@@ -106,23 +107,19 @@ class _BPDataScreenState extends State<BPDataScreen> {
         case DisplayMode.all:
           _currentlyDisplayedRecords = _filteredBPRecords;
           break;
-        case DisplayMode.top20HighSystolic:
+        case DisplayMode.top20:
           final sorted = List<BPRecord>.from(_bpRecords)
             ..sort((a, b) {
-              final valueComparison = b.systolic.compareTo(a.systolic);
+              final valueComparison = _selectedMeasurement == 'systolic'
+                  ? b.systolic.compareTo(a.systolic)
+                  : b.diastolic.compareTo(a.diastolic);
               if (valueComparison != 0) return valueComparison;
               return b.date.compareTo(a.date);
             });
-          _currentlyDisplayedRecords = sorted.take(20).toList();
-          break;
-        case DisplayMode.top20HighDiastolic:
-          final sorted = List<BPRecord>.from(_bpRecords)
-            ..sort((a, b) {
-              final valueComparison = b.diastolic.compareTo(a.diastolic);
-              if (valueComparison != 0) return valueComparison;
-              return b.date.compareTo(a.date);
-            });
-          _currentlyDisplayedRecords = sorted.take(20).toList();
+          _currentlyDisplayedRecords = sorted
+              .where((r) => r.status == _selectedBPStatus)
+              .take(20)
+              .toList();
           break;
       }
     });
@@ -271,6 +268,12 @@ class _BPDataScreenState extends State<BPDataScreen> {
                         _isSearchCardExpanded = !_isSearchCardExpanded;
                       });
                     },
+                  ),
+                  _buildExpandableCard(
+                    title: 'Top 20',
+                    content: _top20Card(),
+                    isExpanded: true,
+                    onToggle: () {},
                   ),
                   _recordsTable(theme, groupedByDate, sortedDates),
                   _pagination(sortedDates.length),
@@ -561,31 +564,60 @@ class _BPDataScreenState extends State<BPDataScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        const Divider(),
+      ],
+    );
+  }
+
+  Widget _top20Card() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Top 20', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() => _displayMode = DisplayMode.top20HighSystolic);
-                  _updateDisplayedRecords();
-                  _showSuccessSnackBar('Displaying Top 20 High Systolic Records.');
+              child: DropdownButton<BPStatus>(
+                value: _selectedBPStatus,
+                items: BPStatus.values.map((BPStatus value) {
+                  return DropdownMenuItem<BPStatus>(
+                    value: value,
+                    child: Text(value.toString().split('.').last),
+                  );
+                }).toList(),
+                onChanged: (BPStatus? newValue) {
+                  setState(() {
+                    _selectedBPStatus = newValue;
+                  });
                 },
-                child: const Text('Top 20 High Systolic'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() => _displayMode = DisplayMode.top20HighDiastolic);
-                  _updateDisplayedRecords();
-                  _showSuccessSnackBar('Displaying Top 20 High Diastolic Records.');
+              child: DropdownButton<String>(
+                value: _selectedMeasurement,
+                items: <String>['systolic', 'diastolic']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedMeasurement = newValue!;
+                  });
                 },
-                child: const Text('Top 20 High Diastolic'),
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.get_app),
+              onPressed: () {
+                setState(() {
+                  _displayMode = DisplayMode.top20;
+                });
+                _updateDisplayedRecords();
+              },
             ),
           ],
         ),
