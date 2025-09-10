@@ -18,7 +18,7 @@ The development of **JagaDiri** will follow a structured, phased approach to ens
 | **Google Sheets API Integration** | Set up Google Cloud, enable the Sheets API, and create the service class to handle data read/write operations. | 1 week | `Pending` |
 | **User Onboarding & Profile** | Build the `Profile & Settings` screen. Implement logic to create a dedicated Google Sheet for each new user. | 1 week | `Pending` |
 | **Screen 1: Dashboard** | Develop the main dashboard UI. Implement data fetching to display key metrics (min, max, avg) and trend indicators. | 1.5 weeks | `Pending` |
-| **Screen 2: Diabetes Tracker** | Create the UI for the sugar tracking screen, including the data list and a form for adding new entries. | 1.5 weeks | `Pending` |
+| **Screen 2: Diabetes Tracker** | Create the UI for the sugar tracking screen, including the data list and a form for adding new entries. | 1.5 weeks | `Completed` |
 | **Screen 3: BP & Pulse Monitor** | Build the UI for the BP and pulse rate screen, with data listing and a form for new entries. | 1.5 weeks | `Pending` |
 | **Basic Indicator Logic** | Implement simple logic to determine **good/bad** and **improving/deteriorating** status based on predefined health ranges. | 3 days | `Pending` |
 | **Initial Testing & Bug Fixes** | Conduct internal testing on all core functionalities to ensure stability. | 1 week | `Pending` |
@@ -29,8 +29,16 @@ The development of **JagaDiri** will follow a structured, phased approach to ens
 | :--- | :--- | :--- | :--- |
 | **Search & Filter Functionality** | Add a search feature to filter data by date range on both the Sugar and BP screens. | 1 week | `Pending` |
 | **Advanced Trend Analysis** | Develop a more sophisticated trend analysis system (e.g., using moving averages) for more accurate feedback. | 1 week | `Pending` |
-| **Reporting Module** | Implement the `Reports` screen with functionality to generate and download PDF and Excel reports. | 2 weeks | `Pending` |
+
 | **UI/UX Refinements** | Enhance the overall user experience with smooth animations, better error handling, and visual consistency. | 1 week | `Pending` |
+
+| **Report Screen** | **Report Generation & UI** | 3-4 weeks | `Pending` |
+| :--- | :--- | :--- | :--- |
+| Task: Design the report screen UI. | | | |
+| Task: Implement PDF report generation. | | | |
+| Task: Implement Excel report generation. | | | |
+| Task: Add a filter and date range selector for reports. | | | |
+| Task: Integrate the report functionality with the app's data. | | | |
 
 ### Phase 3: Optimization & Polishing (Estimated: 2-3 weeks)
 
