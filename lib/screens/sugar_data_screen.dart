@@ -1281,7 +1281,7 @@ class _SugarDataScreenState extends State<SugarDataScreen> {
                   controller: _sugarValueController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*$')),
                   ], // digits + single dot
                   decoration: InputDecoration(
                     labelText: 'Sugar Value',

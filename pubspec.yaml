@@ -42,12 +42,15 @@ dependencies:
   path_provider: ^2.0.14
   shared_preferences: ^2.2.3
   sqflite: ^2.3.3
-  intl: ^0.19.0
+  intl: ^0.18.1
   path: ^1.8.3
   sqflite_common_ffi: any
   sqflite_common_ffi_web: any
   http: ^1.2.1
   collection: ^1.18.0
+  fl_chart: ^0.64.0
+  syncfusion_flutter_charts: ^23.2.7
+  stats: ^2.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
