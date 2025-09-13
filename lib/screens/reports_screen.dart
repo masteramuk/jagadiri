@@ -11,23 +11,55 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   final PageController _pageController = PageController(viewportFraction: 0.5, initialPage: 0);
-  double _currentPage = 0.0;
+  double _page = 0.0;
+  int _currentPageIndex = 0;
 
   final List<Map<String, dynamic>> reports = [
-    {'icon': Icons.trending_up, 'label': 'Individual Health Trends'},
-    {'icon': Icons.compare_arrows, 'label': 'Comparison and Summary'},
-    {'icon': Icons.assessment, 'label': 'Risk Assessment'},
-    {'icon': Icons.link, 'label': 'Correlation'},
-    {'icon': Icons.track_changes, 'label': 'Body Composition & Goal Tracking'},
+    {
+      'icon': Icons.trending_up,
+      'label': 'Individual Health Trends',
+      'description': 'Track your health metrics over time. This report shows trends for blood sugar, blood pressure, and pulse, helping you understand your health trajectory.'
+    },
+    {
+      'icon': Icons.compare_arrows,
+      'label': 'Comparison and Summary',
+      'description': 'Get a summary of your health data. This report provides an overview of your metrics, comparing them to previous periods and highlighting key changes.'
+    },
+    {
+      'icon': Icons.assessment,
+      'label': 'Risk Assessment',
+      'description': 'Understand your health risks. This report analyzes your data to identify potential risks and provides recommendations for mitigation.'
+    },
+    {
+      'icon': Icons.link,
+      'label': 'Correlation',
+      'description': 'Discover how different health metrics are related. This report explores correlations between, for example, your diet and blood sugar levels.'
+    },
+    {
+      'icon': Icons.track_changes,
+      'label': 'Body Composition & Goal Tracking',
+      'description': 'Monitor your body composition and track progress towards your goals. This report includes metrics like BMI and weight, helping you stay on track.'
+    },
+  ];
+
+  final List<Color> colors = [
+    Colors.blue[200]!,
+    Colors.green[200]!,
+    Colors.orange[200]!,
+    Colors.purple[200]!,
+    Colors.red[200]!,
   ];
 
   @override
   void initState() {
     super.initState();
     _pageController.addListener(() {
-      setState(() {
-        _currentPage = _pageController.page!;
-      });
+      if (_pageController.page != null) {
+        setState(() {
+          _page = _pageController.page!;
+          _currentPageIndex = _page.round() % reports.length;
+        });
+      }
     });
   }
 
@@ -39,46 +71,103 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _currentPageIndex = _page.round() % reports.length;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Health Reports'),
       ),
-      body: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: 350,
-              height: 350,
-              child: CustomPaint(
-                painter: DonutChartPainter(itemCount: reports.length),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.rotate(
+                angle: -(_page * 2 * pi / reports.length),
+                child: SizedBox(
+                  width: 350,
+                  height: 350,
+                  child: CustomPaint(
+                    painter: DonutChartPainter(
+                      itemCount: reports.length,
+                      colors: colors,
+                      selectedIndex: _currentPageIndex,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            SizedBox(
-              height: 400, // Increased height for better spacing
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: reports.length,
-                itemBuilder: (context, index) {
-                  final double scale = max(0.8, 1 - (_currentPage - index).abs() * 0.4);
-                  return _buildCarouselItem(reports[index], scale);
-                },
+              Transform.rotate(
+                angle: -(_page * 2 * pi / reports.length),
+                child: SizedBox(
+                  width: 350,
+                  height: 350,
+                  child: Stack(
+                    children: List.generate(reports.length, (index) {
+                      final double angle = 2 * pi * index / reports.length;
+                      final double radius = 145;
+                      final double x = radius * cos(angle - pi / 2);
+                      final double y = radius * sin(angle - pi / 2);
+                      return Positioned(
+                        left: 175 + x - 15,
+                        top: 175 + y - 15,
+                        child: Icon(
+                          reports[index]['icon'],
+                          color: _currentPageIndex == index ? Colors.black : Colors.grey[600],
+                          size: 30,
+                        ),
+                      );
+                    }),
+                  ),
+                ),
               ),
+              SizedBox(
+                height: 220, // Carousel height
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: reports.length * 10, // Infinite scroll effect
+                  itemBuilder: (context, index) {
+                    final reportIndex = index % reports.length;
+                    double scale = max(0.8, 1 - (_page - index).abs() * 0.4);
+                    return _buildCarouselItem(reports[reportIndex], reportIndex, scale);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Swipe right or left to select the available reports',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(20.0),
+            height: 150,
+            child: Text(
+              reports[_currentPageIndex]['description'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCarouselItem(Map<String, dynamic> report, double scale) {
+  Widget _buildCarouselItem(Map<String, dynamic> report, int index, double scale) {
+    bool isSelected = index == _currentPageIndex;
     return Transform.scale(
       scale: scale,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            icon: Icon(report['icon'], size: 60),
+            icon: Icon(
+              report['icon'],
+              size: 60,
+              color: isSelected ? colors[index] : Colors.black54,
+            ),
             onPressed: () => _showFormatDialog(context, report['label']),
           ),
           const SizedBox(height: 8),
@@ -87,7 +176,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Text(
               report['label'],
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -146,15 +235,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
 class DonutChartPainter extends CustomPainter {
   final int itemCount;
-  final List<Color> colors = [
-    Colors.blue[200]!,
-    Colors.green[200]!,
-    Colors.orange[200]!,
-    Colors.purple[200]!,
-    Colors.red[200]!,
-  ];
+  final List<Color> colors;
+  final int selectedIndex;
 
-  DonutChartPainter({required this.itemCount});
+  DonutChartPainter({required this.itemCount, required this.colors, required this.selectedIndex});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -168,11 +252,12 @@ class DonutChartPainter extends CustomPainter {
     final double sweepAngle = 2 * pi / itemCount;
 
     for (int i = 0; i < itemCount; i++) {
-      paint.color = colors[i % colors.length];
+      final bool isSelected = i == selectedIndex;
+      paint.color = isSelected ? Color.lerp(colors[i], Colors.black, 0.2)! : colors[i];
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle + i * sweepAngle,
-        sweepAngle,
+        sweepAngle - 0.02, // Small gap between segments
         false,
         paint,
       );
@@ -180,7 +265,7 @@ class DonutChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant DonutChartPainter oldDelegate) {
+    return oldDelegate.selectedIndex != selectedIndex;
   }
 }

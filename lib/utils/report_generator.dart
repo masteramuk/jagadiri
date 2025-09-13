@@ -125,7 +125,7 @@ class ReportGenerator {
     return _savePdfDocument(pdf, '${type.name}_report_${DateFormat('yyyyMMdd').format(startDate)}_${DateFormat('yyyyMMdd').format(endDate)}.pdf');
   }
 
-  Future<String?> generateExcelReport(ReportType type, DateTime startDate, DateTime endDate) async {
+  Future<List<int>?> generateExcelReport(ReportType type, DateTime startDate, DateTime endDate) async {
     final excel = Excel.createExcel();
 
     // Fetch and transform data using the new methods
@@ -151,7 +151,7 @@ class ReportGenerator {
         break;
     }
 
-    return _saveExcelDocument(excel, '${type.name}_report_${DateFormat('yyyyMMdd').format(startDate)}_${DateFormat('yyyyMMdd').format(endDate)}.xlsx');
+    return _encodeExcelDocument(excel);
   }
 
   // --- PDF Report Builders (using Report-specific models) ---
@@ -571,18 +571,11 @@ class ReportGenerator {
     }
   }
 
-  Future<String?> _saveExcelDocument(Excel excel, String filename) async {
+  Future<List<int>?> _encodeExcelDocument(Excel excel) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$filename');
-      final List<int>? excelBytes = excel.encode();
-      if (excelBytes != null) {
-        await file.writeAsBytes(excelBytes);
-        return file.path;
-      }
-      return null;
+      return excel.encode();
     } catch (e) {
-      print('Error saving Excel: $e');
+      print('Error encoding Excel: $e');
       return null;
     }
   }
