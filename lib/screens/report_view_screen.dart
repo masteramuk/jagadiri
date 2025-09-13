@@ -1,10 +1,12 @@
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:jagadiri/utils/report_generator.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ReportViewScreen extends StatefulWidget {
   final String reportType;
@@ -22,8 +24,8 @@ class ReportViewScreen extends StatefulWidget {
 
 class _ReportViewScreenState extends State<ReportViewScreen> {
   bool _isLoading = true;
-  String? _reportPath;
-  Widget? _previewWidget;
+  String? _pdfPath;
+  Uint8List? _excelBytes;
 
   @override
   void initState() {
@@ -45,31 +47,38 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
 
     if (widget.format == 'PDF') {
       final pdfPath = await reportGenerator.generatePdfReport(reportTypeEnum, startDate, endDate);
-      if (pdfPath != null) {
-        final file = File(pdfPath);
-        final pdfPreview = await Printing.layoutPdf(
-            onLayout: (format) => file.readAsBytes());
-        setState(() {
-          _reportPath = pdfPath;
-          _previewWidget = const Text('PDF Preview Loaded'); // Placeholder, actual preview is handled by Printing package
-        });
-      } else {
-        // Handle error
-      }
+      setState(() {
+        _pdfPath = pdfPath;
+      });
     } else {
-      final excelPath = await reportGenerator.generateExcelReport(reportTypeEnum, startDate, endDate);
-       if (excelPath != null) {
-        setState(() {
-          _reportPath = excelPath;
-        });
-      } else {
-        // Handle error
-      }
+      final excelBytes = await reportGenerator.generateExcelReport(reportTypeEnum, startDate, endDate);
+      setState(() {
+        _excelBytes = excelBytes as Uint8List?;
+      });
     }
 
     setState(() {
       _isLoading = false;
     });
+  }
+
+  Future<void> _saveExcelFile() async {
+    if (_excelBytes == null) return;
+
+    String? outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: 'Please select an output file:',
+      fileName: '${widget.reportType.replaceAll(' ', '_')}_Report.xlsx',
+    );
+
+    if (outputFile != null) {
+      final file = File(outputFile);
+      await file.writeAsBytes(_excelBytes!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Excel report saved to: $outputFile')),
+        );
+      }
+    }
   }
 
   ReportType _getReportTypeEnum(String reportType) {
@@ -97,23 +106,15 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: _buildPreview(),
-                ),
-                _buildDownloadButtons(),
-                const SizedBox(height: 20),
-              ],
-            ),
+          : _buildPreview(),
     );
   }
 
   Widget _buildPreview() {
     if (widget.format == 'PDF') {
-      if (_reportPath != null) {
+      if (_pdfPath != null) {
         return PdfPreview(
-          build: (format) => File(_reportPath!).readAsBytes(),
+          build: (format) => File(_pdfPath!).readAsBytes(),
         );
       } else {
         return const Center(child: Text('Could not load PDF preview.'));
@@ -132,43 +133,16 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
-              Text('Saved to: $_reportPath'),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _saveExcelFile,
+                icon: const Icon(Icons.download),
+                label: const Text('Save Excel File'),
+              ),
             ],
           ),
         ),
       );
     }
-  }
-
-  Widget _buildDownloadButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        if (widget.format == 'PDF')
-          ElevatedButton.icon(
-            onPressed: () async {
-              if (_reportPath != null) {
-                final file = File(_reportPath!);
-                await Printing.sharePdf(bytes: await file.readAsBytes(), filename: 'report.pdf');
-              }
-            },
-            icon: const Icon(Icons.share),
-            label: const Text('Share PDF'),
-          ),
-        if (widget.format == 'Excel')
-          ElevatedButton.icon(
-            onPressed: () {
-              if (_reportPath != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Excel file saved at: $_reportPath')),
-                );
-              }
-            },
-            icon: const Icon(Icons.share),
-            label: const Text('Show Path'),
-          ),
-      ],
-    );
   }
 }
