@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -65,17 +64,24 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
   Future<void> _saveExcelFile() async {
     if (_excelBytes == null) return;
 
-    String? outputFile = await FilePicker.platform.saveFile(
-      dialogTitle: 'Please select an output file:',
-      fileName: '${widget.reportType.replaceAll(' ', '_')}_Report.xlsx',
-    );
+    try {
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Please select an output file:',
+        fileName: '${widget.reportType.replaceAll(' ', '_')}_Report.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        bytes: _excelBytes,
+      );
 
-    if (outputFile != null) {
-      final file = File(outputFile);
-      await file.writeAsBytes(_excelBytes!);
+      if (outputFile != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Excel report saved successfully')),
+        );
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Excel report saved to: $outputFile')),
+          SnackBar(content: Text('Error saving file: ${e.toString()}')),
         );
       }
     }
