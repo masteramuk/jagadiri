@@ -1,232 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:provider/provider.dart';
-import 'package:jagadiri/services/database_service.dart';
-import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'package:intl/intl.dart';
+import 'dart:math';
+import 'package:jagadiri/screens/report_view_screen.dart';
 
-class ReportsScreen extends StatelessWidget {
+class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
-  Future<Map<String, dynamic>> _calculateStatistics(List<dynamic> records) {
-    if (records.isEmpty) return Future.value({});
+  @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
 
-    final stats = {
-      'count': records.length,
-      'dates': records.map((r) => r.date.toString().split(' ')[0]).toSet().length,
-      'averages': <String, dynamic>{},
-      'ranges': <String, dynamic>{},
-      'trends': <String, dynamic>{},
-    };
+class _ReportsScreenState extends State<ReportsScreen> {
+  final PageController _pageController = PageController(viewportFraction: 0.5, initialPage: 0);
+  double _currentPage = 0.0;
 
-    // Calculate statistics based on record type
-    if (records.first.runtimeType.toString().contains('Sugar')) {
-      final values = records.map((r) => r.value as double).toList();
-      final averages = stats['averages'] as Map<String, dynamic>;
-      final ranges = stats['ranges'] as Map<String, dynamic>;
+  final List<Map<String, dynamic>> reports = [
+    {'icon': Icons.trending_up, 'label': 'Individual Health Trends'},
+    {'icon': Icons.compare_arrows, 'label': 'Comparison and Summary'},
+    {'icon': Icons.assessment, 'label': 'Risk Assessment'},
+    {'icon': Icons.link, 'label': 'Correlation'},
+    {'icon': Icons.track_changes, 'label': 'Body Composition & Goal Tracking'},
+  ];
 
-      averages['sugar'] = values.reduce((a, b) => a + b) / values.length;
-      ranges['sugar'] = {
-        'min': values.reduce((a, b) => a < b ? a : b),
-        'max': values.reduce((a, b) => a > b ? a : b),
-      };
-    } else {
-      final systolic = records.map((r) => r.systolic as int).toList();
-      final diastolic = records.map((r) => r.diastolic as int).toList();
-      final pulse = records.map((r) => r.pulseRate as int).toList();
-
-      final averages = stats['averages'] as Map<String, dynamic>;
-      averages['systolic'] = systolic.reduce((a, b) => a + b) / systolic.length;
-      averages['diastolic'] = diastolic.reduce((a, b) => a + b) / diastolic.length;
-      averages['pulse'] = pulse.reduce((a, b) => a + b) / pulse.length;
-
-      final ranges = stats['ranges'] as Map<String, dynamic>;
-      ranges['systolic'] = {'min': systolic.reduce((a, b) => a < b ? a : b), 'max': systolic.reduce((a, b) => a > b ? a : b)};
-      ranges['diastolic'] = {'min': diastolic.reduce((a, b) => a < b ? a : b), 'max': diastolic.reduce((a, b) => a > b ? a : b)};
-      ranges['pulse'] = {'min': pulse.reduce((a, b) => a < b ? a : b), 'max': pulse.reduce((a, b) => a > b ? a : b)};
-    }
-
-    return Future.value(stats);
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(() {
+      setState(() {
+        _currentPage = _pageController.page!;
+      });
+    });
   }
 
-  Future<pw.Widget> _buildHealthTrendChart(List<dynamic> records, bool isSugar) async {
-    // Implementation for line charts using pw.Chart
-    return pw.Container(
-      height: 200,
-      child: pw.Chart(
-        grid: pw.CartesianGrid(
-          xAxis: pw.FixedAxis.fromStrings(
-            records.map((r) => DateFormat('MM/dd').format(r.date)).toList(),
-            marginStart: 30,
-            marginEnd: 30,
-          ),
-          yAxis: pw.FixedAxis(
-            [0, 50, 100, 150, 200],
-            divisions: true,
-          ),
-        ),
-        datasets: [
-          pw.LineDataSet(
-            data: List<pw.PointChartValue>.generate(
-              records.length,
-              (i) => pw.PointChartValue(
-                i.toDouble(),
-                isSugar ? records[i].value : records[i].systolic.toDouble(),
-              ),
-            ),
-            color: PdfColors.blue,
-          ),
-          if (!isSugar) pw.LineDataSet(
-            data: List<pw.PointChartValue>.generate(
-              records.length,
-              (i) => pw.PointChartValue(
-                i.toDouble(),
-                records[i].diastolic.toDouble(),
-              ),
-            ),
-            color: PdfColors.red,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _generatePdfReport(BuildContext context) async {
-    final databaseService = Provider.of<DatabaseService>(context, listen: false);
-    final sugarRecords = await databaseService.getSugarRecords();
-    final bpRecords = await databaseService.getBPRecords();
-
-    final sugarStats = await _calculateStatistics(sugarRecords);
-    final bpStats = await _calculateStatistics(bpRecords);
-
-    // Pre-generate the charts
-    final sugarChart = await _buildHealthTrendChart(sugarRecords, true);
-    final bpChart = await _buildHealthTrendChart(bpRecords, false);
-
-    final pdf = pw.Document();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Header(
-            level: 0,
-            child: pw.Text('Health Trends Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-          ),
-
-          // Sugar Trends Section
-          pw.Header(level: 1, child: pw.Text('Blood Sugar Trends')),
-          sugarChart,
-          pw.Paragraph(text: 'Summary Statistics:'),
-          pw.Bullet(text: 'Average: ${(sugarStats['averages'] as Map)['sugar']?.toStringAsFixed(1)} mg/dL'),
-          pw.Bullet(text: 'Range: ${((sugarStats['ranges'] as Map)['sugar'] as Map)['min']?.toStringAsFixed(1)} - ${((sugarStats['ranges'] as Map)['sugar'] as Map)['max']?.toStringAsFixed(1)} mg/dL'),
-
-          // BP Trends Section
-          pw.Header(level: 1, child: pw.Text('Blood Pressure Trends')),
-          bpChart,
-          pw.Paragraph(text: 'Summary Statistics:'),
-          pw.Bullet(text: 'Average Systolic: ${(bpStats['averages'] as Map)['systolic']?.toStringAsFixed(0)} mmHg'),
-          pw.Bullet(text: 'Average Diastolic: ${(bpStats['averages'] as Map)['diastolic']?.toStringAsFixed(0)} mmHg'),
-          pw.Bullet(text: 'Average Pulse: ${(bpStats['averages'] as Map)['pulse']?.toStringAsFixed(0)} bpm'),
-
-          // Raw Data Tables
-          pw.Header(level: 1, child: pw.Text('Detailed Records')),
-          pw.TableHelper.fromTextArray(
-            headers: ['Date', 'Value', 'Status'],
-            data: sugarRecords.map((record) => [
-              DateFormat('MM/dd/yyyy').format(record.date),
-              record.value.toStringAsFixed(1),
-              record.status.toString().split('.').last,
-            ]).toList(),
-          ),
-        ],
-      ),
-    );
-
-    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
-  }
-
-  Future<void> _generateExcelReport(BuildContext context) async {
-    final databaseService = Provider.of<DatabaseService>(context, listen: false);
-    final sugarRecords = await databaseService.getSugarRecords();
-    final bpRecords = await databaseService.getBPRecords();
-
-    final excel = Excel.createExcel();
-
-    // Health Trends Sheet
-    Sheet trendsSheet = excel['Health Trends'];
-    trendsSheet.appendRow(['Date', 'Sugar Value', 'Status', 'Risk Level']);
-
-    for (var record in sugarRecords) {
-      final riskLevel = _calculateRiskLevel(record.value, true);
-      trendsSheet.appendRow([
-        DateFormat('MM/dd/yyyy').format(record.date),
-        record.value,
-        record.status.toString().split('.').last,
-        riskLevel,
-      ]);
-    }
-
-    // BP Analysis Sheet
-    Sheet bpSheet = excel['BP Analysis'];
-    bpSheet.appendRow(['Date', 'Systolic', 'Diastolic', 'Pulse', 'Status', 'Risk Level']);
-
-    for (var record in bpRecords) {
-      final riskLevel = _calculateBPRiskLevel(record.systolic, record.diastolic);
-      bpSheet.appendRow([
-        DateFormat('MM/dd/yyyy').format(record.date),
-        record.systolic,
-        record.diastolic,
-        record.pulseRate,
-        record.status.toString().split('.').last,
-        riskLevel,
-      ]);
-    }
-
-    // Summary Statistics Sheet
-    final stats = await _calculateStatistics(sugarRecords);
-    Sheet summarySheet = excel['Summary'];
-    summarySheet.appendRow(['Metric', 'Average', 'Min', 'Max', 'Records Count']);
-    summarySheet.appendRow([
-      'Blood Sugar',
-      stats['averages']['sugar']?.toStringAsFixed(1),
-      stats['ranges']['sugar']['min']?.toStringAsFixed(1),
-      stats['ranges']['sugar']['max']?.toStringAsFixed(1),
-      sugarRecords.length.toString(),
-    ]);
-
-    // Save the Excel file
-    final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/JagaDiri_Health_Report.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(excel.encode()!);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Excel report saved to: $path')),
-      );
-    }
-  }
-
-  String _calculateRiskLevel(double value, bool isSugar) {
-    if (isSugar) {
-      if (value < 70) return 'Low';
-      if (value < 100) return 'Normal';
-      if (value < 126) return 'Pre-diabetic';
-      return 'High';
-    }
-    return 'Normal';
-  }
-
-  String _calculateBPRiskLevel(int systolic, int diastolic) {
-    if (systolic >= 180 || diastolic >= 120) return 'Crisis';
-    if (systolic >= 140 || diastolic >= 90) return 'High';
-    if (systolic >= 130 || diastolic >= 80) return 'Elevated';
-    return 'Normal';
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -236,31 +44,143 @@ class ReportsScreen extends StatelessWidget {
         title: const Text('Health Reports'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            ElevatedButton.icon(
-              onPressed: () => _generatePdfReport(context),
-              icon: const Icon(Icons.picture_as_pdf),
-              label: const Text('Generate PDF Report'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: const TextStyle(fontSize: 18),
+            SizedBox(
+              width: 350,
+              height: 350,
+              child: CustomPaint(
+                painter: DonutChartPainter(itemCount: reports.length),
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => _generateExcelReport(context),
-              icon: const Icon(Icons.table_chart),
-              label: const Text('Generate Excel Report'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: const TextStyle(fontSize: 18),
+            SizedBox(
+              height: 400, // Increased height for better spacing
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: reports.length,
+                itemBuilder: (context, index) {
+                  final double scale = max(0.8, 1 - (_currentPage - index).abs() * 0.4);
+                  return _buildCarouselItem(reports[index], scale);
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildCarouselItem(Map<String, dynamic> report, double scale) {
+    return Transform.scale(
+      scale: scale,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: Icon(report['icon'], size: 60),
+            onPressed: () => _showFormatDialog(context, report['label']),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              report['label'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFormatDialog(BuildContext context, String reportType) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Format for $reportType'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf),
+                title: const Text('PDF'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ReportViewScreen(
+                        reportType: reportType,
+                        format: 'PDF',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.table_chart),
+                title: const Text('Excel'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ReportViewScreen(
+                        reportType: reportType,
+                        format: 'Excel',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class DonutChartPainter extends CustomPainter {
+  final int itemCount;
+  final List<Color> colors = [
+    Colors.blue[200]!,
+    Colors.green[200]!,
+    Colors.orange[200]!,
+    Colors.purple[200]!,
+    Colors.red[200]!,
+  ];
+
+  DonutChartPainter({required this.itemCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 60.0;
+
+    final double radius = size.width / 2 - paint.strokeWidth / 2;
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    const double startAngle = -pi / 2;
+    final double sweepAngle = 2 * pi / itemCount;
+
+    for (int i = 0; i < itemCount; i++) {
+      paint.color = colors[i % colors.length];
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle + i * sweepAngle,
+        sweepAngle,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
   }
 }
