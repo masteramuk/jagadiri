@@ -67,13 +67,11 @@ class IndHealthTrendReportGeneratorService {
   pw.Widget _buildHeader(UserProfile? userProfile, DateTime? startDate, DateTime? endDate) {
     String dateRangeText = '';
     if (startDate != null && endDate != null) {
-      dateRangeText = dateRangeText = 'Date Range: ${startDate != null ?
-      DateFormat('dd-MMM-yyyy').format(startDate) : 'N/A'} - ${endDate != null ? DateFormat('dd-MMM-yyyy').format(endDate) : 'N/A'}';
-      //'Date Range: ${startDate.toLocal().toString().split(' ')[0]} - ${endDate.toLocal().toString().split(' ')[0]}';
+      dateRangeText = 'Date Range: ${DateFormat('dd-MMM-yyyy').format(startDate)} - ${DateFormat('dd-MMM-yyyy').format(endDate)}';
     } else if (startDate != null) {
-      dateRangeText = 'From: ${startDate.toLocal().toString().split(' ')[0]}';
+      dateRangeText = 'From: ${DateFormat('dd-MMM-yyyy').format(startDate)}';
     } else if (endDate != null) {
-      dateRangeText = 'To: ${endDate.toLocal().toString().split(' ')[0]}';
+      dateRangeText = 'To: ${DateFormat('dd-MMM-yyyy').format(endDate)}';
     }
 
     return pw.Column(
@@ -173,7 +171,7 @@ class IndHealthTrendReportGeneratorService {
           pw.SizedBox(height: 10),
 
           // Internet-based Analysis (Placeholder for now)
-          pw.Text('Real-time Analysis:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('Analysis of the result', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.Text('  (Analysis from internet based on trend will go here)'),
         ] else pw.Text('No sugar records available for summary.'),
 
@@ -272,8 +270,8 @@ class IndHealthTrendReportGeneratorService {
           pw.Table.fromTextArray(
             headers: ['Date', 'Time', 'Time Name', 'Systolic', 'Diastolic', 'Pulse', 'Status'],
             data: bpRecords.map((record) => [
-              record.date.toLocal().toString().split(' ')[0],
-              record.time,
+              DateFormat('dd-MMM-yyyy').format(record.date),
+              _formatTimeOfDay(record.time),
               record.timeName,
               record.systolic.toString(),
               record.diastolic.toString(),
@@ -288,12 +286,12 @@ class IndHealthTrendReportGeneratorService {
           pw.Table.fromTextArray(
             headers: ['Date', 'Time', 'Meal Time Category', 'Meal Type', 'Sugar Level', 'Status'],
             data: sugarRecords.map((record) => [
-              record.date.toLocal().toString().split(' ')[0],
-              record.time,
-              record.mealTimeCategory,
-              record.mealType,
+              DateFormat('dd-MMM-yyyy').format(record.date),
+              _formatTimeOfDay(record.time),
+              record.mealTimeCategory.name,
+              record.mealType.name,
               record.value.toString(),
-              record.status,
+              record.status.name,
             ]).toList(),
           ),
         ],
@@ -311,7 +309,7 @@ class IndHealthTrendReportGeneratorService {
     );
   }
 
-  // Helper to get sugar status information
+  // Helper to get sugar status information and SVG icon
   Map<String, dynamic> _getSugarStatusInfo(
       SugarRecord record, UserProfile userProfile, List<SugarReference> sugarRefs) {
     final ref = sugarRefs.firstWhere(
@@ -326,30 +324,66 @@ class IndHealthTrendReportGeneratorService {
     );
 
     String statusText;
-    PdfColor statusColor;
+    String statusIconSvg;
 
     switch (status) {
       case SugarStatus.excellent:
         statusText = 'Excellent';
-        statusColor = PdfColors.green;
+        statusIconSvg = _getSvgIconForStatus(SugarStatus.excellent);
         break;
       case SugarStatus.borderline:
         statusText = 'Borderline';
-        statusColor = PdfColors.orange;
+        statusIconSvg = _getSvgIconForStatus(SugarStatus.borderline);
         break;
       case SugarStatus.low:
         statusText = 'Low';
-        statusColor = PdfColors.blue;
+        statusIconSvg = _getSvgIconForStatus(SugarStatus.low);
         break;
       case SugarStatus.high:
         statusText = 'High';
-        statusColor = PdfColors.red;
+        statusIconSvg = _getSvgIconForStatus(SugarStatus.high);
         break;
       default:
         statusText = 'Unknown';
-        statusColor = PdfColors.grey;
+        statusIconSvg = _getSvgIconForStatus(null); // Pass null to indicate an unknown status
     }
-    return {'statusText': statusText, 'statusColor': statusColor};
+    return {'statusText': statusText, 'statusIconSvg': statusIconSvg};
+  }
+
+  // Helper to map SugarStatus to an SVG icon string
+  String _getSvgIconForStatus(SugarStatus? status) {
+    switch (status) {
+      case SugarStatus.excellent:
+        return '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="green" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+      ''';
+      case SugarStatus.borderline:
+        return '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="orange" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+        </svg>
+      ''';
+      case SugarStatus.low:
+        return '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="blue" d="M20 12l-1.41-1.41L13 15.17V4h-2v11.17l-5.58-5.59L4 12l8 8 8-8z"/>
+        </svg>
+      ''';
+      case SugarStatus.high:
+        return '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="red" d="M4 12l1.41 1.41L11 8.83V20h2V8.83l5.58 5.59L20 12l-8-8-8 8z"/>
+        </svg>
+      ''';
+      default:
+        return '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="grey" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.15-2.9L13.4 10.1c.36-.36.6-.86.6-1.4 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+        </svg>
+      ''';
+    }
   }
 
   pw.Widget _buildSugarSummaryBox(
@@ -361,7 +395,7 @@ class IndHealthTrendReportGeneratorService {
       {bool isAverage = false}) {
     final statusInfo = _getSugarStatusInfo(record, userProfile, sugarRefs);
     final statusText = statusInfo['statusText'];
-    final statusColor = statusInfo['statusColor'];
+    final statusIconSvg = statusInfo['statusIconSvg'];
 
     return pw.Expanded(
       child: pw.Container(
@@ -383,16 +417,19 @@ class IndHealthTrendReportGeneratorService {
                   style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
                 ),
                 pw.SizedBox(width: 5),
-                pw.Container(
-                  width: 10,
-                  height: 10,
-                  decoration: pw.BoxDecoration(color: statusColor, shape: pw.BoxShape.circle),
+                // Display the SVG icon for the status
+                pw.SvgImage(
+                  svg: statusIconSvg,
+                  height: 28,
+                  width: 28,
                 ),
               ],
             ),
+            pw.SizedBox(height: 5),
+            pw.Text(statusText, style: pw.TextStyle(fontSize: 12)),
             if (!isAverage) ...[
               pw.Text('Meal: ${record.mealType.name}'),
-              pw.Text('Time: ${record.mealTimeCategory.name}'),
+              pw.Text('Time: ${_formatTimeOfDay(record.time)}'),
             ] else ...[
               pw.Text('Meal: NA'),
               pw.Text('Time: NA'),
@@ -410,7 +447,7 @@ class IndHealthTrendReportGeneratorService {
         pw.Text('Last Recorded Measurement:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 5),
         pw.Text('Date: ${DateFormat('dd-MMM-yyyy').format(record.date)}'),
-        pw.Text('Time: ${record.time}'),
+        pw.Text('Time: ${_formatTimeOfDay(record.time)}'),
         pw.Text('Value: ${record.value.toStringAsFixed(1)} $unit'),
         pw.Text('Meal Type: ${record.mealType.name}'),
         pw.Text('Meal Time: ${record.mealTimeCategory.name}'),
@@ -423,42 +460,65 @@ class IndHealthTrendReportGeneratorService {
       return pw.Text('  Not enough data for trend analysis.');
     }
 
-    // Sort records by date and time ascending to get chronological order
     final sortedRecords = List<SugarRecord>.from(sugarRecords)
       ..sort((a, b) {
         int dateComparison = a.date.compareTo(b.date);
         if (dateComparison != 0) return dateComparison;
-        return a.time.compareTo(b.time);
+        // Compare times for same-day records
+        final aTime = a.time;
+        final bTime = b.time;
+        return aTime.hour.compareTo(bTime.hour) * 60 + aTime.minute.compareTo(bTime.minute);
       });
 
     final latestRecord = sortedRecords.last;
     final previousRecord = sortedRecords[sortedRecords.length - 2];
 
     String trendText;
-    PdfColor trendColor;
-    String trendIcon;
+    String trendIconSvg;
 
+    // 48 px vector icons – drop-in replacement that renders crisp in PDF
     if (latestRecord.value < previousRecord.value) {
-      trendText = 'Improving (value decreased)';
-      trendColor = PdfColors.green;
-      trendIcon = '⬇'; // Down arrow
+          trendText = 'Improving (value decreased)';
+          trendIconSvg = '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="green" d="M16 4H8v2h8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-4 13l4-4 4 4z"/>
+        </svg>
+      ''';
     } else if (latestRecord.value > previousRecord.value) {
-      trendText = 'Worsening (value increased)';
-      trendColor = PdfColors.red;
-      trendIcon = '⬆'; // Up arrow
+          trendText = 'Worsening (value increased)';
+          trendIconSvg = '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="red" d="M16 20H8v-2h8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-4 7l4 4 4-4z"/>
+        </svg>
+      ''';
     } else {
-      trendText = 'Stable (value unchanged)';
-      trendColor = PdfColors.grey;
-      trendIcon = '➡'; // Right arrow
+          trendText = 'Stable (value unchanged)';
+          trendIconSvg = '''
+        <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="blue" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-5 13h10v-2H7z"/>
+        </svg>
+      ''';
     }
 
     return pw.Row(
       children: [
         pw.Text('  Trend: '),
-        pw.Text(trendIcon, style: pw.TextStyle(color: trendColor, fontSize: 12)),
+        pw.SvgImage(
+          svg: trendIconSvg,
+          height: 12,
+          width: 12,
+        ),
         pw.SizedBox(width: 5),
-        pw.Text(trendText, style: pw.TextStyle(color: trendColor)),
+        pw.Text(trendText),
       ],
     );
+  }
+
+  // A helper function to format TimeOfDay objects for the PDF.
+  String _formatTimeOfDay(TimeOfDay time) {
+    final now = DateTime.now();
+    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    final format = DateFormat('hh:mm a');
+    return format.format(dt);
   }
 }
