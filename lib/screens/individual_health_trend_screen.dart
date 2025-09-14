@@ -88,15 +88,28 @@ class _IndividualHealthTrendScreenState
 
   Widget _buildDatePickerButton(
       BuildContext context, String label, DateTime date, bool isStartDate) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => _selectDate(context, isStartDate),
-          child: Text(DateFormat('yyyy-MM-dd').format(date)),
+    return InkWell(
+      onTap: () => _selectDate(context, isStartDate),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ],
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, size: 20),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(DateFormat('yyyy-MM-dd').format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:jagadiri/screens/home_screen.dart';
 // No specific imports needed for individual setting screens
 import 'package:jagadiri/providers/theme_provider.dart';
 
+import 'package:jagadiri/providers/user_profile_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
@@ -30,6 +31,9 @@ void main() async {
         ),
         ChangeNotifierProvider<ThemeProvider>(
           create: (context) => ThemeProvider(savedThemeName),
+        ),
+        ChangeNotifierProvider<UserProfileProvider>(
+          create: (context) => UserProfileProvider(),
         ),
       ],
       child: const MyApp(),
