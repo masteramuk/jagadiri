@@ -9,6 +9,7 @@ import '../models/user_profile.dart';
 import 'database_service.dart';
 import '../providers/user_profile_provider.dart';
 import 'dart:math';
+import 'package:intl/intl.dart';
 
 class ReportGeneratorService {
   final DatabaseService _databaseService;
@@ -20,12 +21,18 @@ class ReportGeneratorService {
     final pdf = pw.Document();
 
     try {
-      final UserProfile? userProfile = _userProfileProvider.userProfile;
+      // 1. Directly fetch the user profile from the database
+      // This ensures you get the data after the async call completes
+      final UserProfile? userProfile = await _databaseService.getUserProfile();
+
       final List<BPRecord> bpRecords = await _databaseService.getBPRecordsDateRange(startDate: startDate, endDate: endDate);
       final List<SugarRecord> sugarRecords = await _databaseService.getSugarRecordsDateRange(startDate: startDate, endDate: endDate);
 
-      // Load a font that supports a wider range of characters, if necessary
-      // final font = await PdfGoogleFonts.openSansRegular();
+      // 2. Add a null check for the userProfile
+      if (userProfile == null) {
+        // Handle the case where no user profile exists
+        throw Exception('User profile not found. Cannot generate report.');
+      }
 
       pdf.addPage(
         pw.MultiPage(
@@ -55,7 +62,9 @@ class ReportGeneratorService {
   pw.Widget _buildHeader(UserProfile? userProfile, DateTime? startDate, DateTime? endDate) {
     String dateRangeText = '';
     if (startDate != null && endDate != null) {
-      dateRangeText = 'Date Range: ${startDate.toLocal().toString().split(' ')[0]} - ${endDate.toLocal().toString().split(' ')[0]}';
+      dateRangeText = dateRangeText = 'Date Range: ${startDate != null ?
+          DateFormat('dd-MMM-yyyy').format(startDate) : 'N/A'} - ${endDate != null ? DateFormat('dd-MMM-yyyy').format(endDate) : 'N/A'}';
+      //'Date Range: ${startDate.toLocal().toString().split(' ')[0]} - ${endDate.toLocal().toString().split(' ')[0]}';
     } else if (startDate != null) {
       dateRangeText = 'From: ${startDate.toLocal().toString().split(' ')[0]}';
     } else if (endDate != null) {
@@ -67,11 +76,31 @@ class ReportGeneratorService {
       children: [
         pw.Text('Health Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
         if (userProfile != null) ...[
-          pw.Text('Name: ${userProfile.name}', style: pw.TextStyle(fontSize: 18)),
-          pw.Text('Date of Birth: ${userProfile.dob?.toLocal().toString().split(' ')[0] ?? 'N/A'}', style: pw.TextStyle(fontSize: 18)),
-          pw.Text('Gender: ${userProfile.gender ?? 'N/A'}', style: pw.TextStyle(fontSize: 18)),
+          pw.Text('Name: ${userProfile.name}', style: pw.TextStyle(fontSize: 14)),
+          pw.Text('Date of Birth: ${userProfile.dob != null ? DateFormat('dd-MMM-yyyy').format(userProfile.dob!) : 'N/A'}', style: pw.TextStyle(fontSize: 18)),
+          pw.Text('Gender: ${userProfile.gender ?? 'N/A'}', style: pw.TextStyle(fontSize: 14)),
+          // Add the following lines to display height, weight, sugar scenario, and BMI
+          pw.Text(
+              'Height: ${userProfile.height.toStringAsFixed(1)} ${userProfile.measurementUnit == 'Metric' ? 'cm' : 'in'}',
+              style: pw.TextStyle(fontSize: 14)
+          ),
+          pw.Text(
+              'Weight: ${userProfile.weight.toStringAsFixed(1)} ${userProfile.measurementUnit == 'Metric' ? 'kg' : 'lbs'}',
+              style: pw.TextStyle(fontSize: 14)
+          ),
+          pw.Text(
+              'BMI: ${userProfile != null ? (userProfile.measurementUnit == 'Metric' ? userProfile.weight / ((userProfile.height / 100) * (userProfile.height / 100)) : (userProfile.weight / (userProfile.height * userProfile.height)) * 703).toStringAsFixed(2) : 'N/A'}',
+              style: pw.TextStyle(fontSize: 14)
+          ),
+          pw.Text(
+              'Diabetic Status: ${userProfile.sugarScenario ?? 'N/A'}',
+              style: pw.TextStyle(fontSize: 14)
+          ),
         ],
-        pw.Text('Report Date: ${DateTime.now().toLocal().toString().split(' ')[0]}', style: pw.TextStyle(fontSize: 18)),
+        pw.Text(
+          'Report Date: ${DateFormat('dd-MMM-yyyy HH:mm').format(DateTime.now())}',
+          style: pw.TextStyle(fontSize: 18),
+        ),
         if (dateRangeText.isNotEmpty) pw.Text(dateRangeText, style: pw.TextStyle(fontSize: 18)),
       ],
     );
