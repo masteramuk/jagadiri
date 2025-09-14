@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import '../services/database_service.dart';
-import '../services/report_generator_service.dart';
+import '../services/ind_health_trend_report_generator_service.dart';
 import '../providers/user_profile_provider.dart';
 
 class IndividualHealthTrendScreen extends StatefulWidget {
