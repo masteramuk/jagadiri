@@ -74,9 +74,9 @@ class _IndividualHealthTrendScreenState
                     try {
                       final databaseService = Provider.of<DatabaseService>(context, listen: false);
                       final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-                      final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
+                      final indHealthTrendReportGeneratorService = IndHealthTrendReportGeneratorService(databaseService, userProfileProvider);
 
-                      final pdfBytes = await reportGenerator.generateReport(
+                      final pdfBytes = await indHealthTrendReportGeneratorService.generateReport(
                         startDate: _startDate,
                         endDate: _endDate,
                       );
