@@ -39,6 +39,11 @@ class IndHealthTrendReportGeneratorService {
         throw Exception('User profile not found. Cannot generate report.');
       }
 
+      // Generate the internet-based analysis text
+      final String sugarAnalysisText = await _getInternetBasedSugarAnalysis(sugarRecords);
+      final String bpAnalysisText = await _getInternetBasedBPAnalysis(bpRecords);
+
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -46,9 +51,9 @@ class IndHealthTrendReportGeneratorService {
             return [
               _buildHeader(userProfile, startDate, endDate),
               pw.SizedBox(height: 20),
-              _buildSummarySection(userProfile, bpRecords, sugarRecords, sugarRefs),
+              _buildSummarySection(userProfile, bpRecords, sugarRecords, sugarRefs, sugarAnalysisText, bpAnalysisText),
               pw.SizedBox(height: 20),
-              _buildAnalysisSection(bpRecords, sugarRecords),
+              _buildAnalysisSection(bpRecords, sugarRecords, bpAnalysisText),
               pw.SizedBox(height: 20),
               _buildDetailedDataSection(bpRecords, sugarRecords),
             ];
@@ -109,7 +114,7 @@ class IndHealthTrendReportGeneratorService {
     );
   }
 
-  pw.Widget _buildSummarySection(UserProfile userProfile, List<BPRecord> bpRecords, List<SugarRecord> sugarRecords, List<SugarReference> sugarRefs) {
+  pw.Widget _buildSummarySection(UserProfile userProfile, List<BPRecord> bpRecords, List<SugarRecord> sugarRecords, List<SugarReference> sugarRefs, String sugarAnalysisText, String bpAnalysisText) {
     // Calculate summary statistics
     double avgSystolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce((a, b) => a + b) / bpRecords.length : 0;
     double avgDiastolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce((a, b) => a + b) / bpRecords.length : 0;
@@ -172,7 +177,7 @@ class IndHealthTrendReportGeneratorService {
 
           // Internet-based Analysis (Placeholder for now)
           pw.Text('Analysis of the result', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text('  (Analysis from internet based on trend will go here)'),
+          pw.Text('  $sugarAnalysisText'),
         ] else pw.Text('No sugar records available for summary.'),
 
         pw.SizedBox(height: 20),
@@ -180,7 +185,7 @@ class IndHealthTrendReportGeneratorService {
         // Blood Pressure and Pulse Rate Measurement Sub-section (Placeholder)
         pw.Text('Blood Pressure and Pulse Rate Measurement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 10),
-        pw.Text('  (Content for BP and Pulse summary will go here)'),
+        pw.Text('  $bpAnalysisText'),
 
         pw.SizedBox(height: 20),
 
@@ -203,7 +208,7 @@ class IndHealthTrendReportGeneratorService {
     );
   }
 
-  pw.Widget _buildAnalysisSection(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
+  pw.Widget _buildAnalysisSection(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords, String bpAnalysisText) {
     // Standard ranges (example values, ideally these would come from user profile or a configuration)
     const int normalSystolicMin = 90, normalSystolicMax = 120;
     const int normalDiastolicMin = 60, normalDiastolicMax = 80;
@@ -478,22 +483,22 @@ class IndHealthTrendReportGeneratorService {
 
     // 48 px vector icons – drop-in replacement that renders crisp in PDF
     if (latestRecord.value < previousRecord.value) {
-          trendText = 'Improving (value decreased)';
-          trendIconSvg = '''
+      trendText = 'Improving (value decreased)';
+      trendIconSvg = '''
         <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
           <path fill="green" d="M16 4H8v2h8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-4 13l4-4 4 4z"/>
         </svg>
       ''';
     } else if (latestRecord.value > previousRecord.value) {
-          trendText = 'Worsening (value increased)';
-          trendIconSvg = '''
+      trendText = 'Worsening (value increased)';
+      trendIconSvg = '''
         <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
           <path fill="red" d="M16 20H8v-2h8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-4 7l4 4 4-4z"/>
         </svg>
       ''';
     } else {
-          trendText = 'Stable (value unchanged)';
-          trendIconSvg = '''
+      trendText = 'Stable (value unchanged)';
+      trendIconSvg = '''
         <svg viewBox="0 0 24 24" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
           <path fill="blue" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-5 13h10v-2H7z"/>
         </svg>
@@ -520,5 +525,57 @@ class IndHealthTrendReportGeneratorService {
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
     final format = DateFormat('hh:mm a');
     return format.format(dt);
+  }
+
+  // New function to perform internet-based analysis for blood sugar
+  Future<String> _getInternetBasedSugarAnalysis(List<SugarRecord> sugarRecords) async {
+    if (sugarRecords.length < 2) {
+      return 'Not enough data for a comprehensive internet-based analysis.';
+    }
+
+    final sortedRecords = List<SugarRecord>.from(sugarRecords)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final latestRecord = sortedRecords.last;
+    final previousRecord = sortedRecords[sortedRecords.length - 2];
+
+    String trend = 'stable';
+    if (latestRecord.value > previousRecord.value) {
+      trend = 'increasing';
+    } else if (latestRecord.value < previousRecord.value) {
+      trend = 'decreasing';
+    }
+
+    final String userQuery = "Explain the health implications of a $trend trend in blood sugar levels, and provide general advice on how to manage this trend. Use information from reputable health sources.";
+
+    // This is a placeholder for the actual API call. You would integrate
+    // a real API client here to send a query to a service (e.g., Gemini API)
+    // with Google Search grounding enabled.
+    // The response would be the synthesized analysis text.
+    // Replace this with your actual implementation.
+    return "Based on your records showing an **$trend** trend, here is a general analysis from reliable health sources. An $trend trend in blood sugar levels can be a sign of fluctuating glycemic control. It may be linked to changes in diet, physical activity, or stress. Consistently high or low levels can impact long-term health. It is recommended to maintain a balanced diet and regular exercise to help stabilize glucose levels. Always consult a healthcare professional for personalized advice and diagnosis.";
+  }
+
+  // New function to perform internet-based analysis for blood pressure
+  Future<String> _getInternetBasedBPAnalysis(List<BPRecord> bpRecords) async {
+    if (bpRecords.isEmpty) {
+      return 'No BP records available for a comprehensive internet-based analysis.';
+    }
+
+    double avgSystolic = bpRecords.map((e) => e.systolic).reduce((a, b) => a + b) / bpRecords.length;
+    double avgDiastolic = bpRecords.map((e) => e.diastolic).reduce((a, b) => a + b) / bpRecords.length;
+
+    final String userQuery = "Explain the health implications of an average blood pressure of ${avgSystolic.toStringAsFixed(0)} over ${avgDiastolic.toStringAsFixed(0)} mmHg, and provide general advice on how to manage it. Use information from reputable health sources.";
+
+    // This is a placeholder for the actual API call.
+    // Replace this with your actual implementation.
+    String analysis = '';
+    if (avgSystolic >= 130 || avgDiastolic >= 80) {
+      analysis = "Your average blood pressure of ${avgSystolic.toStringAsFixed(0)}/${avgDiastolic.toStringAsFixed(0)} mmHg falls into the category of **Elevated Blood Pressure** or **Stage 1 Hypertension**, as defined by the American Heart Association. This can increase your risk of cardiovascular events over time. To help manage this, a healthcare professional may recommend lifestyle changes such as a low-sodium diet, regular physical activity, stress management, and maintaining a healthy weight.";
+    } else {
+      analysis = "Your average blood pressure of ${avgSystolic.toStringAsFixed(0)}/${avgDiastolic.toStringAsFixed(0)} mmHg is considered within the **Normal** range. Maintaining a healthy lifestyle with a balanced diet, regular exercise, and minimal stress is key to keeping your blood pressure in this range.";
+    }
+
+    return analysis;
   }
 }
