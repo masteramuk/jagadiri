@@ -4,7 +4,7 @@ import 'package:jagadiri/screens/report_view_screen.dart';
 import 'package:jagadiri/screens/individual_health_trend_screen.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:jagadiri/providers/user_profile_provider.dart';
-import 'package:jagadiri/services/report_generator_service.dart';
+import 'package:jagadiri/services/ind_health_trend_report_generator_service.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 
