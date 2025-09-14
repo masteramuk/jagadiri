@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:jagadiri/screens/report_view_screen.dart';
+import 'package:jagadiri/screens/individual_health_trend_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -168,7 +169,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
               size: 60,
               color: isSelected ? colors[index] : Colors.black54,
             ),
-            onPressed: () => _showFormatDialog(context, report['label']),
+            onPressed: () {
+              if (report['label'] == 'Individual Health Trends') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const IndividualHealthTrendScreen(),
+                  ),
+                );
+              } else {
+                _showFormatDialog(context, report['label']);
+              }
+            },
           ),
           const SizedBox(height: 8),
           Padding(
