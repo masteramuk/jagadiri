@@ -99,7 +99,7 @@ class ReportGeneratorService {
         ],
         pw.Text(
           'Report Date: ${DateFormat('dd-MMM-yyyy HH:mm').format(DateTime.now())}',
-          style: pw.TextStyle(fontSize: 18),
+          style: pw.TextStyle(fontSize: 14),
         ),
         if (dateRangeText.isNotEmpty) pw.Text(dateRangeText, style: pw.TextStyle(fontSize: 18)),
       ],
