@@ -5,11 +5,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
-import '../models/user_profile.dart';
+import 'package:jagadiri/models/user_profile.dart';
+import 'package:jagadiri/utils/sugar_analysis.dart';
+import 'package:jagadiri/models/sugar_reference.dart';
+import 'dart:typed_data';
 import 'database_service.dart';
 import '../providers/user_profile_provider.dart';
 import 'dart:math';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 
 class ReportGeneratorService {
   final DatabaseService _databaseService;
@@ -27,6 +31,7 @@ class ReportGeneratorService {
 
       final List<BPRecord> bpRecords = await _databaseService.getBPRecordsDateRange(startDate: startDate, endDate: endDate);
       final List<SugarRecord> sugarRecords = await _databaseService.getSugarRecordsDateRange(startDate: startDate, endDate: endDate);
+      final List<SugarReference> sugarRefs = await _databaseService.getSugarReferencesScenario(userProfile?.sugarScenario ?? 'Non-Diabetic');
 
       // 2. Add a null check for the userProfile
       if (userProfile == null) {
@@ -41,7 +46,7 @@ class ReportGeneratorService {
             return [
               _buildHeader(userProfile, startDate, endDate),
               pw.SizedBox(height: 20),
-              _buildSummarySection(bpRecords, sugarRecords),
+              _buildSummarySection(userProfile, bpRecords, sugarRecords, sugarRefs),
               pw.SizedBox(height: 20),
               _buildAnalysisSection(bpRecords, sugarRecords),
               pw.SizedBox(height: 20),
@@ -106,38 +111,93 @@ class ReportGeneratorService {
     );
   }
 
-  pw.Widget _buildSummarySection(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
+  pw.Widget _buildSummarySection(UserProfile userProfile, List<BPRecord> bpRecords, List<SugarRecord> sugarRecords, List<SugarReference> sugarRefs) {
     // Calculate summary statistics
     double avgSystolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce((a, b) => a + b) / bpRecords.length : 0;
     double avgDiastolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce((a, b) => a + b) / bpRecords.length : 0;
     double avgPulse = bpRecords.isNotEmpty ? bpRecords.map((e) => e.pulseRate).reduce((a, b) => a + b) / bpRecords.length : 0;
+
+    // Sugar specific calculations
+    SugarRecord? minSugarRecord = sugarRecords.isNotEmpty ? sugarRecords.reduce((a, b) => a.value < b.value ? a : b) : null;
+    SugarRecord? maxSugarRecord = sugarRecords.isNotEmpty ? sugarRecords.reduce((a, b) => a.value > b.value ? a : b) : null;
     double avgSugar = sugarRecords.isNotEmpty ? sugarRecords.map((e) => e.value).reduce((a, b) => a + b) / sugarRecords.length : 0;
 
-    int minSystolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce(min) : 0;
-    int maxSystolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce(max) : 0;
-    int minDiastolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce(min) : 0;
-    int maxDiastolic = bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce(max) : 0;
-    int minPulse = bpRecords.isNotEmpty ? bpRecords.map((e) => e.pulseRate).reduce(min) : 0;
-    int maxPulse = bpRecords.isNotEmpty ? bpRecords.map((e) => e.pulseRate).reduce(max) : 0;
-    double minSugar = sugarRecords.isNotEmpty ? sugarRecords.map((e) => e.value).reduce(min) : 0;
-    double maxSugar = sugarRecords.isNotEmpty ? sugarRecords.map((e) => e.value).reduce(max) : 0;
+    String sugarUnit = userProfile.measurementUnit == 'Metric' ? 'mmol/L' : 'mg/dL';
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text('SUMMARY', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
         _buildSectionSeparator(),
+        pw.SizedBox(height: 10),
+
+        // Blood Sugar Measurement Sub-section
+        pw.Text('Blood Sugar Measurement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+
+        // Min, Max, Average Boxes for Blood Sugar
+        if (sugarRecords.isNotEmpty) ...[
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+            children: [
+              _buildSugarSummaryBox('Minimum', minSugarRecord!, sugarUnit, userProfile, sugarRefs),
+              _buildSugarSummaryBox('Maximum', maxSugarRecord!, sugarUnit, userProfile, sugarRefs),
+              //_buildSugarSummaryBox('Average', SugarRecord(date: DateTime.now(), time: '00:00', mealTimeCategory: MealTimeCategory.before, mealType: MealType.none, value: avgSugar, status: SugarStatus.unknown), sugarUnit, userProfile, sugarRefs, isAverage: true),
+              _buildSugarSummaryBox(
+                'Average',
+                SugarRecord(
+                  date: DateTime.now(),
+                  time: TimeOfDay(hour: 0, minute: 0), // A valid TimeOfDay object
+                  mealTimeCategory: MealTimeCategory.before, // A valid enum value
+                  mealType: MealType.breakfast, // A valid enum value
+                  value: avgSugar,
+                  status: SugarStatus.good, // A valid enum value
+                ),
+                sugarUnit,
+                userProfile,
+                sugarRefs,
+                isAverage: true,
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 10),
+          _buildSectionSeparator(),
+          pw.SizedBox(height: 10),
+
+          // Last Record Capture
+          _buildLastSugarRecord(sugarRecords.first, sugarUnit),
+          pw.SizedBox(height: 10),
+
+          // Trend Analysis
+          pw.Text('Trend Analysis:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          _getSugarTrendAnalysis(sugarRecords),
+          pw.SizedBox(height: 10),
+
+          // Internet-based Analysis (Placeholder for now)
+          pw.Text('Real-time Analysis:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('  (Analysis from internet based on trend will go here)'),
+        ] else pw.Text('No sugar records available for summary.'),
+
+        pw.SizedBox(height: 20),
+
+        // Blood Pressure and Pulse Rate Measurement Sub-section (Placeholder)
+        pw.Text('Blood Pressure and Pulse Rate Measurement', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+        pw.Text('  (Content for BP and Pulse summary will go here)'),
+
+        pw.SizedBox(height: 20),
+
         pw.Text('Blood Pressure Summary:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.Text('  Average Systolic: ${avgSystolic.toStringAsFixed(1)}'),
-        pw.Text('  Min Systolic: $minSystolic, Max Systolic: $maxSystolic'),
+        pw.Text('  Min Systolic: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce(min) : 0}, Max Systolic: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.systolic).reduce(max) : 0}'),
         pw.Text('  Average Diastolic: ${avgDiastolic.toStringAsFixed(1)}'),
-        pw.Text('  Min Diastolic: $minDiastolic, Max Diastolic: $maxDiastolic'),
+        pw.Text('  Min Diastolic: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce(min) : 0}, Max Diastolic: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.diastolic).reduce(max) : 0}'),
         pw.Text('  Average Pulse: ${avgPulse.toStringAsFixed(1)}'),
-        pw.Text('  Min Pulse: $minPulse, Max Pulse: $maxPulse'),
+        pw.Text('  Min Pulse: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.pulseRate).reduce(min) : 0}, Max Pulse: ${bpRecords.isNotEmpty ? bpRecords.map((e) => e.pulseRate).reduce(max) : 0}'),
         pw.SizedBox(height: 10),
         pw.Text('Blood Sugar Summary:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.Text('  Average Sugar: ${avgSugar.toStringAsFixed(1)}'),
-        pw.Text('  Min Sugar: ${minSugar.toStringAsFixed(1)}, Max Sugar: ${maxSugar.toStringAsFixed(1)}'),
+        pw.Text('  Min Sugar: ${minSugarRecord?.value.toStringAsFixed(1) ?? 'N/A'}, Max Sugar: ${maxSugarRecord?.value.toStringAsFixed(1) ?? 'N/A'}'),
         pw.SizedBox(height: 10),
         pw.Text('Interpretation:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.Text('  Based on your records, your average blood pressure is ${avgSystolic.toStringAsFixed(0)}/${avgDiastolic.toStringAsFixed(0)} mmHg and average blood sugar is ${avgSugar.toStringAsFixed(1)}.'),
@@ -249,6 +309,154 @@ class ReportGeneratorService {
       margin: const pw.EdgeInsets.symmetric(vertical: 10),
       height: 1,
       color: PdfColors.grey300,
+    );
+  }
+
+  // Helper to get sugar status information
+  Map<String, dynamic> _getSugarStatusInfo(
+      SugarRecord record, UserProfile userProfile, List<SugarReference> sugarRefs) {
+    final ref = sugarRefs.firstWhere(
+      (r) => r.mealTime == record.mealTimeCategory.name,
+      orElse: () => sugarRefs.first, // Fallback if no specific ref found
+    );
+
+    final status = analyseStatus(
+      records: [record],
+      unit: userProfile.measurementUnit,
+      ref: ref,
+    );
+
+    String statusText;
+    PdfColor statusColor;
+
+    switch (status) {
+      case SugarStatus.excellent:
+        statusText = 'Excellent';
+        statusColor = PdfColors.green;
+        break;
+      case SugarStatus.borderline:
+        statusText = 'Borderline';
+        statusColor = PdfColors.orange;
+        break;
+      case SugarStatus.low:
+        statusText = 'Low';
+        statusColor = PdfColors.blue;
+        break;
+      case SugarStatus.high:
+        statusText = 'High';
+        statusColor = PdfColors.red;
+        break;
+      default:
+        statusText = 'Unknown';
+        statusColor = PdfColors.grey;
+    }
+    return {'statusText': statusText, 'statusColor': statusColor};
+  }
+
+  pw.Widget _buildSugarSummaryBox(
+      String title,
+      SugarRecord record,
+      String unit,
+      UserProfile userProfile,
+      List<SugarReference> sugarRefs,
+      {bool isAverage = false}) {
+    final statusInfo = _getSugarStatusInfo(record, userProfile, sugarRefs);
+    final statusText = statusInfo['statusText'];
+    final statusColor = statusInfo['statusColor'];
+
+    return pw.Expanded(
+      child: pw.Container(
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: PdfColors.grey300),
+          borderRadius: pw.BorderRadius.circular(5),
+        ),
+        padding: const pw.EdgeInsets.all(8),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 4),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 5),
+            pw.Row(
+              children: [
+                pw.Text(
+                  '${record.value.toStringAsFixed(1)} $unit',
+                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(width: 5),
+                pw.Container(
+                  width: 10,
+                  height: 10,
+                  decoration: pw.BoxDecoration(color: statusColor, shape: pw.BoxShape.circle),
+                ),
+              ],
+            ),
+            if (!isAverage) ...[
+              pw.Text('Meal: ${record.mealType.name}'),
+              pw.Text('Time: ${record.mealTimeCategory.name}'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildLastSugarRecord(SugarRecord record, String unit) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('Last Recorded Sugar:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 5),
+        pw.Text('Date: ${DateFormat('dd-MMM-yyyy').format(record.date)}'),
+        pw.Text('Time: ${record.time}'),
+        pw.Text('Value: ${record.value.toStringAsFixed(1)} $unit'),
+        pw.Text('Meal Type: ${record.mealType.name}'),
+        pw.Text('Meal Time: ${record.mealTimeCategory.name}'),
+      ],
+    );
+  }
+
+  pw.Widget _getSugarTrendAnalysis(List<SugarRecord> sugarRecords) {
+    if (sugarRecords.length < 2) {
+      return pw.Text('  Not enough data for trend analysis.');
+    }
+
+    // Sort records by date and time ascending to get chronological order
+    final sortedRecords = List<SugarRecord>.from(sugarRecords)
+      ..sort((a, b) {
+        int dateComparison = a.date.compareTo(b.date);
+        if (dateComparison != 0) return dateComparison;
+        return a.time.compareTo(b.time);
+      });
+
+    final latestRecord = sortedRecords.last;
+    final previousRecord = sortedRecords[sortedRecords.length - 2];
+
+    String trendText;
+    PdfColor trendColor;
+    String trendIcon;
+
+    if (latestRecord.value < previousRecord.value) {
+      trendText = 'Improving (value decreased)';
+      trendColor = PdfColors.green;
+      trendIcon = '⬇'; // Down arrow
+    } else if (latestRecord.value > previousRecord.value) {
+      trendText = 'Worsening (value increased)';
+      trendColor = PdfColors.red;
+      trendIcon = '⬆'; // Up arrow
+    } else {
+      trendText = 'Stable (value unchanged)';
+      trendColor = PdfColors.grey;
+      trendIcon = '➡'; // Right arrow
+    }
+
+    return pw.Row(
+      children: [
+        pw.Text('  Trend: '),
+        pw.Text(trendIcon, style: pw.TextStyle(color: trendColor, fontSize: 12)),
+        pw.SizedBox(width: 5),
+        pw.Text(trendText, style: pw.TextStyle(color: trendColor)),
+      ],
     );
   }
 }
