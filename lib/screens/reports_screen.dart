@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:jagadiri/screens/report_view_screen.dart';
 import 'package:jagadiri/screens/individual_health_trend_screen.dart';
+import 'package:jagadiri/services/database_service.dart';
+import 'package:jagadiri/providers/user_profile_provider.dart';
+import 'package:jagadiri/services/report_generator_service.dart';
+import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -209,16 +214,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: const Text('PDF'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ReportViewScreen(
-                        reportType: reportType,
-                        format: 'PDF',
-                      ),
-                    ),
-                  );
+                  final databaseService = Provider.of<DatabaseService>(context, listen: false);
+                  final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+                  final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
+                  
+                  try {
+                    final pdfBytes = await reportGenerator.generateReport();
+                    await Printing.sharePdf(bytes: pdfBytes, filename: 'health_report.pdf');
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error generating PDF: $e')),
+                    );
+                  }
                 },
               ),
               ListTile(

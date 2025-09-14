@@ -24,13 +24,14 @@ enum MealType {
 }
 
 class SugarRecord {
-  final int? id; // Nullable for new records before insertion
+  final int? id;
   final DateTime date;
   final TimeOfDay time;
   final MealTimeCategory mealTimeCategory;
   final MealType mealType;
   final double value;
   final SugarStatus status;
+  final String? notes; // <-- ADDED: The new notes property
 
   SugarRecord({
     this.id,
@@ -40,6 +41,7 @@ class SugarRecord {
     required this.mealType,
     required this.value,
     required this.status,
+    this.notes, // <-- ADDED: Notes in the constructor
   });
 
   // Factory constructor to create a SugarRecord from a JSON map (for local storage)
@@ -48,12 +50,13 @@ class SugarRecord {
       date: DateTime.parse(json['date']),
       time: TimeOfDay(hour: json['timeHour'], minute: json['timeMinute']),
       mealTimeCategory: MealTimeCategory.values.firstWhere(
-          (e) => e.toString().split('.').last == json['mealTimeCategory']),
+              (e) => e.toString().split('.').last == json['mealTimeCategory']),
       mealType: MealType.values.firstWhere(
-          (e) => e.toString().split('.').last == json['mealType']),
+              (e) => e.toString().split('.').last == json['mealType']),
       value: json['value'],
       status: SugarStatus.values.firstWhere(
-          (e) => e.toString().split('.').last == json['status']),
+              (e) => e.toString().split('.').last == json['status']),
+      notes: json['notes'], // <-- ADDED: Reading notes from JSON
     );
   }
 
@@ -67,6 +70,7 @@ class SugarRecord {
       'mealType': mealType.toString().split('.').last,
       'value': value,
       'status': status.toString().split('.').last,
+      'notes': notes, // <-- ADDED: Writing notes to JSON
     };
   }
 
@@ -77,12 +81,13 @@ class SugarRecord {
       date: DateTime.fromMillisecondsSinceEpoch(map['date']),
       time: TimeOfDay(hour: int.parse(map['time'].split(':')[0]), minute: int.parse(map['time'].split(':')[1])),
       mealTimeCategory: MealTimeCategory.values.firstWhere(
-          (e) => e.toString().split('.').last == map['mealTimeCategory'], orElse: () => MealTimeCategory.before),
+              (e) => e.toString().split('.').last == map['mealTimeCategory'], orElse: () => MealTimeCategory.before),
       mealType: MealType.values.firstWhere(
-          (e) => e.toString().split('.').last == map['mealType'], orElse: () => MealType.breakfast),
+              (e) => e.toString().split('.').last == map['mealType'], orElse: () => MealType.breakfast),
       value: map['value'],
       status: SugarStatus.values.firstWhere(
-          (e) => e.toString().split('.').last == map['status'], orElse: () => SugarStatus.good),
+              (e) => e.toString().split('.').last == map['status'], orElse: () => SugarStatus.good),
+      notes: map['notes'], // <-- ADDED: Reading notes from DB map
     );
   }
 
@@ -96,10 +101,7 @@ class SugarRecord {
       'mealType': mealType.toString().split('.').last,
       'value': value,
       'status': status.toString().split('.').last,
+      'notes': notes, // <-- ADDED: Writing notes to DB map
     };
   }
-
-  
-
-  
 }
