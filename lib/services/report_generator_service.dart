@@ -15,35 +15,40 @@ class ReportGeneratorService {
 
   ReportGeneratorService(this._databaseService, this._userProfileProvider);
 
-  Future<Uint8List> generateReport() async {
+  Future<Uint8List> generateReport({DateTime? startDate, DateTime? endDate}) async {
     final pdf = pw.Document();
 
-    //final UserProfile? userProfile = await _userProfileProvider.getUserProfile();
-    final UserProfile? userProfile = _userProfileProvider.userProfile;
-    final List<BPRecord> bpRecords = await _databaseService.getBPRecords();
-    final List<SugarRecord> sugarRecords = await _databaseService.getSugarRecords();
+    try {
+      final UserProfile? userProfile = _userProfileProvider.userProfile;
+      final List<BPRecord> bpRecords = await _databaseService.getBPRecordsDateRange(startDate: startDate, endDate: endDate);
+      final List<SugarRecord> sugarRecords = await _databaseService.getSugarRecordsDateRange(startDate: startDate, endDate: endDate);
 
-    // Load a font that supports a wider range of characters, if necessary
-    // final font = await PdfGoogleFonts.openSansRegular();
+      // Load a font that supports a wider range of characters, if necessary
+      // final font = await PdfGoogleFonts.openSansRegular();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return [
-            _buildHeader(userProfile),
-            pw.SizedBox(height: 20),
-            _buildSummarySection(bpRecords, sugarRecords),
-            pw.SizedBox(height: 20),
-            _buildAnalysisSection(bpRecords, sugarRecords),
-            pw.SizedBox(height: 20),
-            _buildDetailedDataSection(bpRecords, sugarRecords),
-          ];
-        },
-      ),
-    );
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return [
+              _buildHeader(userProfile),
+              pw.SizedBox(height: 20),
+              _buildSummarySection(bpRecords, sugarRecords),
+              pw.SizedBox(height: 20),
+              _buildAnalysisSection(bpRecords, sugarRecords),
+              pw.SizedBox(height: 20),
+              _buildDetailedDataSection(bpRecords, sugarRecords),
+            ];
+          },
+        ),
+      );
 
-    return pdf.save();
+      return pdf.save();
+    } catch (e, stackTrace) {
+      print('Error generating PDF: $e');
+      print('Stack trace: $stackTrace');
+      rethrow; // Re-throw the error so it can be caught by the caller (reports_screen.dart)
+    }
   }
 
   pw.Widget _buildHeader(UserProfile? userProfile) {
