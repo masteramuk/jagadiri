@@ -77,7 +77,7 @@ class ReportGeneratorService {
         pw.Text('Health Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
         if (userProfile != null) ...[
           pw.Text('Name: ${userProfile.name}', style: pw.TextStyle(fontSize: 14)),
-          pw.Text('Date of Birth: ${userProfile.dob != null ? DateFormat('dd-MMM-yyyy').format(userProfile.dob!) : 'N/A'}', style: pw.TextStyle(fontSize: 18)),
+          pw.Text('Date of Birth: ${userProfile.dob != null ? DateFormat('dd-MMM-yyyy').format(userProfile.dob!) : 'N/A'}', style: pw.TextStyle(fontSize: 14)),
           pw.Text('Gender: ${userProfile.gender ?? 'N/A'}', style: pw.TextStyle(fontSize: 14)),
           // Add the following lines to display height, weight, sugar scenario, and BMI
           pw.Text(
@@ -101,7 +101,7 @@ class ReportGeneratorService {
           'Report Date: ${DateFormat('dd-MMM-yyyy HH:mm').format(DateTime.now())}',
           style: pw.TextStyle(fontSize: 14),
         ),
-        if (dateRangeText.isNotEmpty) pw.Text(dateRangeText, style: pw.TextStyle(fontSize: 18)),
+        if (dateRangeText.isNotEmpty) pw.Text(dateRangeText, style: pw.TextStyle(fontSize: 14)),
       ],
     );
   }
