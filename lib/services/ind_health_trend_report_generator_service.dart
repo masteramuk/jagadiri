@@ -15,11 +15,11 @@ import 'dart:math';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 
-class ReportGeneratorService {
+class IndHealthTrendReportGeneratorService {
   final DatabaseService _databaseService;
   final UserProfileProvider _userProfileProvider;
 
-  ReportGeneratorService(this._databaseService, this._userProfileProvider);
+  IndHealthTrendReportGeneratorService(this._databaseService, this._userProfileProvider);
 
   Future<Uint8List> generateReport({DateTime? startDate, DateTime? endDate}) async {
     final pdf = pw.Document();
@@ -68,7 +68,7 @@ class ReportGeneratorService {
     String dateRangeText = '';
     if (startDate != null && endDate != null) {
       dateRangeText = dateRangeText = 'Date Range: ${startDate != null ?
-          DateFormat('dd-MMM-yyyy').format(startDate) : 'N/A'} - ${endDate != null ? DateFormat('dd-MMM-yyyy').format(endDate) : 'N/A'}';
+      DateFormat('dd-MMM-yyyy').format(startDate) : 'N/A'} - ${endDate != null ? DateFormat('dd-MMM-yyyy').format(endDate) : 'N/A'}';
       //'Date Range: ${startDate.toLocal().toString().split(' ')[0]} - ${endDate.toLocal().toString().split(' ')[0]}';
     } else if (startDate != null) {
       dateRangeText = 'From: ${startDate.toLocal().toString().split(' ')[0]}';
@@ -142,7 +142,6 @@ class ReportGeneratorService {
             children: [
               _buildSugarSummaryBox('Minimum', minSugarRecord!, sugarUnit, userProfile, sugarRefs),
               _buildSugarSummaryBox('Maximum', maxSugarRecord!, sugarUnit, userProfile, sugarRefs),
-              //_buildSugarSummaryBox('Average', SugarRecord(date: DateTime.now(), time: '00:00', mealTimeCategory: MealTimeCategory.before, mealType: MealType.none, value: avgSugar, status: SugarStatus.unknown), sugarUnit, userProfile, sugarRefs, isAverage: true),
               _buildSugarSummaryBox(
                 'Average',
                 SugarRecord(
@@ -298,7 +297,7 @@ class ReportGeneratorService {
             ]).toList(),
           ),
         ],
-        if (bpRecords.isEmpty && sugarRecords.isEmpty) 
+        if (bpRecords.isEmpty && sugarRecords.isEmpty)
           pw.Text('No detailed records available for the selected date range.'),
       ],
     );
@@ -316,7 +315,7 @@ class ReportGeneratorService {
   Map<String, dynamic> _getSugarStatusInfo(
       SugarRecord record, UserProfile userProfile, List<SugarReference> sugarRefs) {
     final ref = sugarRefs.firstWhere(
-      (r) => r.mealTime == record.mealTimeCategory.name,
+          (r) => r.mealTime == record.mealTimeCategory.name,
       orElse: () => sugarRefs.first, // Fallback if no specific ref found
     );
 
@@ -394,6 +393,9 @@ class ReportGeneratorService {
             if (!isAverage) ...[
               pw.Text('Meal: ${record.mealType.name}'),
               pw.Text('Time: ${record.mealTimeCategory.name}'),
+            ] else ...[
+              pw.Text('Meal: NA'),
+              pw.Text('Time: NA'),
             ],
           ],
         ),
@@ -405,7 +407,7 @@ class ReportGeneratorService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text('Last Recorded Sugar:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text('Last Recorded Measurement:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 5),
         pw.Text('Date: ${DateFormat('dd-MMM-yyyy').format(record.date)}'),
         pw.Text('Time: ${record.time}'),

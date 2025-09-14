@@ -222,11 +222,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     final databaseService = Provider.of<DatabaseService>(context, listen: false);
                     final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
                     print('DatabaseService and UserProfileProvider obtained');
-                    final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
-                    print('ReportGeneratorService instantiated');
+                    final indHealthTrendReportGeneratorService = IndHealthTrendReportGeneratorService(databaseService, userProfileProvider);
+                    print('IndHealthTrendReportGeneratorService instantiated');
                     
                     print('Calling generateReport()');
-                    final pdfBytes = await reportGenerator.generateReport();
+                    final pdfBytes = await indHealthTrendReportGeneratorService.generateReport();
                     print('generateReport() returned. PDF bytes length: ${pdfBytes.length}');
                     
                     if (pdfBytes.isNotEmpty) {
