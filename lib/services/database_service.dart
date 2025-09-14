@@ -247,6 +247,32 @@ class DatabaseService {
     return maps.map((e) => SugarRecord.fromDbMap(e)).toList();
   }
 
+  Future<List<SugarRecord>> getSugarRecordsDateRange({DateTime? startDate, DateTime? endDate}) async {
+    final db = await database;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+
+    if (startDate != null) {
+      whereClause += 'date >= ?';
+      whereArgs.add(startDate.millisecondsSinceEpoch);
+    }
+    if (endDate != null) {
+      if (whereClause.isNotEmpty) {
+        whereClause += ' AND ';
+      }
+      whereClause += 'date <= ?';
+      whereArgs.add(endDate.millisecondsSinceEpoch);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'sugar_records',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'date DESC, time DESC',
+    );
+    return maps.map((e) => SugarRecord.fromDbMap(e)).toList();
+  }
+
   Future<int> updateSugarRecord(SugarRecord record) async {
     final db = await database;
     return await db.update('sugar_records', record.toDbMap(),
@@ -269,6 +295,32 @@ class DatabaseService {
     final db = await database;
     final List<Map<String, dynamic>> maps =
         await db.query('bp_records', orderBy: 'date DESC, time DESC');
+    return maps.map((e) => BPRecord.fromDbMap(e)).toList();
+  }
+
+  Future<List<BPRecord>> getBPRecordsDateRange({DateTime? startDate, DateTime? endDate}) async {
+    final db = await database;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+
+    if (startDate != null) {
+      whereClause += 'date >= ?';
+      whereArgs.add(startDate.millisecondsSinceEpoch);
+    }
+    if (endDate != null) {
+      if (whereClause.isNotEmpty) {
+        whereClause += ' AND ';
+      }
+      whereClause += 'date <= ?';
+      whereArgs.add(endDate.millisecondsSinceEpoch);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'bp_records',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'date DESC, time DESC',
+    );
     return maps.map((e) => BPRecord.fromDbMap(e)).toList();
   }
 

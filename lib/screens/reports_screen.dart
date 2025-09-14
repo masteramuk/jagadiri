@@ -215,15 +215,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 leading: const Icon(Icons.picture_as_pdf),
                 title: const Text('PDF'),
                 onTap: () async {
+                  print('PDF ListTile tapped');
                   Navigator.of(context).pop();
-                  final databaseService = Provider.of<DatabaseService>(context, listen: false);
-                  final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-                  final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
-                  
                   try {
+                    print('Attempting to get DatabaseService and UserProfileProvider');
+                    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+                    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+                    print('DatabaseService and UserProfileProvider obtained');
+                    final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
+                    print('ReportGeneratorService instantiated');
+                    
+                    print('Calling generateReport()');
                     final pdfBytes = await reportGenerator.generateReport();
-                    await Printing.sharePdf(bytes: pdfBytes, filename: 'health_report.pdf');
-                  } catch (e) {
+                    print('generateReport() returned. PDF bytes length: ${pdfBytes.length}');
+                    
+                    if (pdfBytes.isNotEmpty) {
+                      print('Attempting to share PDF');
+                      await Printing.sharePdf(bytes: pdfBytes, filename: 'health_report.pdf');
+                      print('PDF shared successfully');
+                    } else {
+                      print('PDF bytes are empty. Not sharing.');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('PDF generation resulted in empty content.')),
+                      );
+                    }
+                  } catch (e, stackTrace) {
+                    print('Error in PDF generation or sharing: $e');
+                    print('Stack trace: $stackTrace');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error generating PDF: $e')),
                     );

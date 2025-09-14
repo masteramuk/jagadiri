@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
+import '../services/database_service.dart';
+import '../services/report_generator_service.dart';
+import '../providers/user_profile_provider.dart';
 
 class IndividualHealthTrendScreen extends StatefulWidget {
   const IndividualHealthTrendScreen({super.key});
@@ -61,12 +66,35 @@ class _IndividualHealthTrendScreenState
               style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
             ),
             const SizedBox(height: 32),
-            Row(
+            Row( // Buttons Row
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement PDF generation
+                  onPressed: () async {
+                    try {
+                      final databaseService = Provider.of<DatabaseService>(context, listen: false);
+                      final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+                      final reportGenerator = ReportGeneratorService(databaseService, userProfileProvider);
+
+                      final pdfBytes = await reportGenerator.generateReport(
+                        startDate: _startDate,
+                        endDate: _endDate,
+                      );
+
+                      if (pdfBytes.isNotEmpty) {
+                        await Printing.sharePdf(bytes: pdfBytes, filename: 'health_trend_report.pdf');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('PDF generation resulted in empty content.')),
+                        );
+                      }
+                    } catch (e, stackTrace) {
+                      print('Error generating PDF from IndividualHealthTrendScreen: $e');
+                      print('Stack trace: $stackTrace');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error generating PDF: $e')),
+                      );
+                    }
                   },
                   icon: const Icon(Icons.picture_as_pdf),
                   label: const Text('Generate PDF'),
@@ -78,8 +106,8 @@ class _IndividualHealthTrendScreenState
                   icon: const Icon(Icons.table_chart),
                   label: const Text('Generate Excel'),
                 ),
-              ],
-            ),
+              ], // End of Row children
+            ), // End of Buttons Row
           ],
         ),
       ),
