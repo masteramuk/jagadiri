@@ -1,8 +1,36 @@
-
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class IndividualHealthTrendScreen extends StatelessWidget {
+class IndividualHealthTrendScreen extends StatefulWidget {
   const IndividualHealthTrendScreen({super.key});
+
+  @override
+  State<IndividualHealthTrendScreen> createState() =>
+      _IndividualHealthTrendScreenState();
+}
+
+class _IndividualHealthTrendScreenState
+    extends State<IndividualHealthTrendScreen> {
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
+  DateTime _endDate = DateTime.now();
+
+  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isStartDate ? _startDate : _endDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != (isStartDate ? _startDate : _endDate)) {
+      setState(() {
+        if (isStartDate) {
+          _startDate = picked;
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,9 +38,65 @@ class IndividualHealthTrendScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Individual Health Trends'),
       ),
-      body: const Center(
-        child: Text('Date range selection will be here.'),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Date Range',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildDatePickerButton(context, 'Start Date', _startDate, true),
+                _buildDatePickerButton(context, 'End Date', _endDate, false),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Note: Selecting a date range of more than 3 months may cause the app to lag.',
+              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Implement PDF generation
+                  },
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('Generate PDF'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Implement Excel generation
+                  },
+                  icon: const Icon(Icons.table_chart),
+                  label: const Text('Generate Excel'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildDatePickerButton(
+      BuildContext context, String label, DateTime date, bool isStartDate) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => _selectDate(context, isStartDate),
+          child: Text(DateFormat('yyyy-MM-dd').format(date)),
+        ),
+      ],
     );
   }
 }
