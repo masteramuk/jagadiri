@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:jagadiri/screens/report_view_screen.dart';
-import 'package:jagadiri/screens/individual_health_trend_screen.dart';
-import 'package:jagadiri/services/database_service.dart';
-import 'package:jagadiri/providers/user_profile_provider.dart';
-import 'package:jagadiri/services/ind_health_trend_report_generator_service.dart';
-import 'package:provider/provider.dart';
-import 'package:printing/printing.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -22,26 +16,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   final List<Map<String, dynamic>> reports = [
     {
+      'id': 'individual_trends',
       'icon': Icons.trending_up,
       'label': 'Individual Health Trends',
       'description': 'Track your health metrics over time. This report shows trends for blood sugar, blood pressure, and pulse, helping you understand your health trajectory.'
     },
     {
+      'id': 'comparison_summary',
       'icon': Icons.compare_arrows,
       'label': 'Comparison and Summary',
       'description': 'Get a summary of your health data. This report provides an overview of your metrics, comparing them to previous periods and highlighting key changes.'
     },
     {
+      'id': 'risk_assessment',
       'icon': Icons.assessment,
       'label': 'Risk Assessment',
       'description': 'Understand your health risks. This report analyzes your data to identify potential risks and provides recommendations for mitigation.'
     },
     {
+      'id': 'correlation',
       'icon': Icons.link,
       'label': 'Correlation',
       'description': 'Discover how different health metrics are related. This report explores correlations between, for example, your diet and blood sugar levels.'
     },
     {
+      'id': 'body_composition',
       'icon': Icons.track_changes,
       'label': 'Body Composition & Goal Tracking',
       'description': 'Monitor your body composition and track progress towards your goals. This report includes metrics like BMI and weight, helping you stay on track.'
@@ -128,10 +127,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               ),
               SizedBox(
-                height: 220, // Carousel height
+                height: 220,
                 child: PageView.builder(
                   controller: _pageController,
-                  itemCount: reports.length * 10, // Infinite scroll effect
+                  itemCount: reports.length * 10,
                   itemBuilder: (context, index) {
                     final reportIndex = index % reports.length;
                     double scale = max(0.8, 1 - (_page - index).abs() * 0.4);
@@ -143,17 +142,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
           const SizedBox(height: 20),
           const Text(
-            'Swipe right or left to select the available reports',
-            style: TextStyle(color: Colors.grey),
+            'Swipe left or right to select a report',
+            style: TextStyle(color: Colors.grey, fontSize: 14),
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             height: 150,
             child: Text(
               reports[_currentPageIndex]['description'],
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16, height: 1.4),
             ),
           ),
         ],
@@ -175,15 +174,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
               color: isSelected ? colors[index] : Colors.black54,
             ),
             onPressed: () {
-              if (report['label'] == 'Individual Health Trends') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const IndividualHealthTrendScreen(),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ReportViewScreen(
+                    reportId: report['id'],
+                    reportLabel: report['label'],
+                    reportDescription: report['description'], // Pass description
+                    reportIcon: report['icon'], // Pass icon
                   ),
-                );
-              } else {
-                _showFormatDialog(context, report['label']);
-              }
+                ),
+              );
             },
           ),
           const SizedBox(height: 8),
@@ -199,74 +199,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showFormatDialog(BuildContext context, String reportType) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Format for $reportType'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf),
-                title: const Text('PDF'),
-                onTap: () async {
-                  print('PDF ListTile tapped');
-                  Navigator.of(context).pop();
-                  try {
-                    print('Attempting to get DatabaseService and UserProfileProvider');
-                    final databaseService = Provider.of<DatabaseService>(context, listen: false);
-                    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-                    print('DatabaseService and UserProfileProvider obtained');
-                    final indHealthTrendReportGeneratorService = IndHealthTrendReportGeneratorService(databaseService, userProfileProvider);
-                    print('IndHealthTrendReportGeneratorService instantiated');
-                    
-                    print('Calling generateReport()');
-                    final pdfBytes = await indHealthTrendReportGeneratorService.generateReport();
-                    print('generateReport() returned. PDF bytes length: ${pdfBytes.length}');
-                    
-                    if (pdfBytes.isNotEmpty) {
-                      print('Attempting to share PDF');
-                      await Printing.sharePdf(bytes: pdfBytes, filename: 'health_report.pdf');
-                      print('PDF shared successfully');
-                    } else {
-                      print('PDF bytes are empty. Not sharing.');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('PDF generation resulted in empty content.')),
-                      );
-                    }
-                  } catch (e, stackTrace) {
-                    print('Error in PDF generation or sharing: $e');
-                    print('Stack trace: $stackTrace');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error generating PDF: $e')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.table_chart),
-                title: const Text('Excel'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ReportViewScreen(
-                        reportType: reportType,
-                        format: 'Excel',
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -295,7 +227,7 @@ class DonutChartPainter extends CustomPainter {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle + i * sweepAngle,
-        sweepAngle - 0.02, // Small gap between segments
+        sweepAngle - 0.02,
         false,
         paint,
       );
