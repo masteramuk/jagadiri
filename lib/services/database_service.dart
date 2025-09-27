@@ -15,7 +15,7 @@ class DatabaseService {
   DatabaseService._internal();
 
   // Define the database version
-  static const int _dbVersion = 9;
+  static const int _dbVersion = 10;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -88,6 +88,9 @@ class DatabaseService {
         await _createTable(db, 'sugar_reference', _sugarReferenceSchema);
         await seedSugarReference(db);
         break;
+      case 10:
+        await _addColumns(db, 'sugar_records', {'notes': 'TEXT'});
+        break;
       default:
         debugPrint('No migration found for version $version');
         break;
@@ -111,7 +114,8 @@ class DatabaseService {
     mealTimeCategory TEXT,
     mealType TEXT,
     value REAL,
-    status TEXT
+    status TEXT,
+    notes TEXT
   ''';
 
   static const String _bpRecordsSchema = '''

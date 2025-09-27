@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart' as _pdf;
@@ -7,6 +8,7 @@ import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 import '../models/user_profile.dart';
 import 'health_analysis_service.dart';
+import 'individual_health_trend_chart_generator.dart';
 
 class IndividualHealthTrendService {
   final HealthAnalysisService _analysisService = HealthAnalysisService();
@@ -16,11 +18,42 @@ class IndividualHealthTrendService {
     required List<SugarRecord> sugarReadings,
     required List<BPRecord> bpReadings,
     required UserProfile userProfile,
+    required Uint8List glucoseChartBytes,
+    required Uint8List bpChartBytes,
+    required Uint8List pulseChartBytes,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     // ✅ Create document
     final pdf = pw.Document();
+
+    // ✅ Preload chart widgets
+    final glucoseChartWidget = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('Glucose Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+        pw.Image(pw.MemoryImage(glucoseChartBytes)),
+      ],
+    );
+
+    final bpChartWidget = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('Blood Pressure Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+        pw.Image(pw.MemoryImage(bpChartBytes)),
+      ],
+    );
+
+    final pulseChartWidget = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('Pulse Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+        pw.Image(pw.MemoryImage(pulseChartBytes)),
+      ],
+    );
 
     final analysisText = _analysisService.generateAnalysisText(
       sugarReadings: sugarReadings,
@@ -42,12 +75,11 @@ class IndividualHealthTrendService {
             _buildAnalysisSection(analysisText),
             pw.SizedBox(height: 20),
             _buildSectionSeparator(),
-            //commenting out charts for now
-            /*
-            if (sugarReadings.isNotEmpty) _buildChartSection('Glucose Trend', chartDrawer.drawGlucoseChart(sugarReadings, 30)),
-            if (bpReadings.isNotEmpty) _buildChartSection('Blood Pressure Trend', chartDrawer.drawBPChart(bpReadings, 30)),
-            if (bpReadings.isNotEmpty) _buildChartSection('Pulse Rate Trend', chartDrawer.drawPulseChart(bpReadings, 30)),
-            */
+            glucoseChartWidget,
+            pw.SizedBox(height: 10),
+            bpChartWidget,
+            pw.SizedBox(height: 10),
+            pulseChartWidget,
             pw.SizedBox(height: 20),
             _buildDetailedDataSection(bpReadings, sugarReadings),
           ];
@@ -242,6 +274,22 @@ class IndividualHealthTrendService {
         ],
         if (bpRecords.isEmpty && sugarRecords.isEmpty)
           pw.Text('No detailed records available for the selected date range.'),
+      ],
+    );
+  }
+
+  Future<pw.Widget> buildChartSection({
+    required String title,
+    required GlobalKey chartKey,
+  }) async {
+    final bytes = await IndividualHealthTrendChartGenerator.captureChartAsImage(chartKey);
+    final image = pw.MemoryImage(bytes);
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 10),
+        pw.Image(image),
       ],
     );
   }

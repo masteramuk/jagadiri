@@ -36,22 +36,26 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   provider: ^6.0.5
-  pdf: ^3.10.4
-  printing: ^5.11.1
-  excel: ^4.0.6
-  path_provider: ^2.0.14
-  shared_preferences: ^2.2.3
-  sqflite: ^2.3.3
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  #excel: ^4.0.6  remove because of conflict with syncfusion_flutter_xlsio and suggested to use syncfusion_flutter_xlsio
+  syncfusion_flutter_pdf: ^31.1.20
+  syncfusion_flutter_xlsio: ^31.1.20
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.3
+  sqflite: ^2.4.2
   intl: ^0.20.2
-  path: ^1.8.3
-  sqflite_common_ffi: any
-  sqflite_common_ffi_web: any
-  http: ^1.2.1
-  collection: ^1.18.0
+  path: ^1.9.1
+  sqflite_common_ffi: ^2.3.6
+  sqflite_common_ffi_web: ^1.0.1+1
+  http: ^1.5.0
+  collection: ^1.19.1
   fl_chart: ^1.1.1
   stats: ^3.0.0
   file_picker: ^10.3.3
   tflite_flutter: ^0.11.0
+  permission_handler: ^11.0.0
+  open_file: ^3.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

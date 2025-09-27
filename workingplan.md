@@ -1,6 +1,6 @@
 # JagaDiri Development Working Plan
 
-This document outlines the agreed-upon phased approach for the JagaDiri application's cloud storage integration.
+This document outlines the agreed-upon phased approach for the JagaDiri application's development.
 
 ## Core Principle
 
@@ -37,4 +37,20 @@ This document outlines the agreed-upon phased approach for the JagaDiri applicat
 *   **Excel File Management:** Implement logic to create and manage Excel files (or other OneDrive-compatible spreadsheet formats) for sugar and BP data.
 *   **User Choice:** Allow users to select their preferred cloud storage provider (Google Drive or OneDrive) from the application settings.
 
-This phased approach ensures a deliverable MVP with Google Drive support while providing a clear roadmap for future expansion to OneDrive.
+## Phase 3: Report Generation Refactoring
+
+**Goal:** Improve the report generation user experience and resolve issues with chart rendering in PDFs.
+
+**Details:**
+1.  **New Report Viewer Screen:** A new screen will be created to display the generated report content directly within the app. This includes header, summary, analysis, data tables, and live-rendered charts.
+2.  **Decoupled Generation:** The process of generating the report data and displaying it is separated from the process of saving it to a file (PDF/Excel).
+3.  **User Flow Change:**
+    *   From the `ReportViewScreen`, the user will tap a single "Generate Report" button.
+    *   This will navigate them to the new viewer screen showing the full report.
+    *   From the new viewer screen, they can choose to "Save as PDF" (without charts initially) or "Save as Excel".
+
+**Implementation Steps:**
+*   Create `lib/screens/generated_report_viewer_screen.dart`.
+*   Modify `lib/screens/report_view_screen.dart` to remove old buttons and navigate to the new screen.
+*   Implement PDF saving (without charts) on the new screen.
+*   Implement Excel saving on the new screen.

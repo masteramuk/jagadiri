@@ -1,23 +1,23 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
-import '../services/individual_health_trend_service.dart';
+import '../models/bp_record.dart';
+import '../models/sugar_record.dart';
 import '../services/database_service.dart';
+import 'generated_report_viewer_screen.dart';
 
 class ReportViewScreen extends StatefulWidget {
   final String reportId;
   final String reportLabel;
-  final String reportDescription; // ✅ Added description
-  final IconData? reportIcon; // Optional icon if needed
+  final String reportDescription;
+  final IconData? reportIcon;
 
-  const ReportViewScreen({
+  ReportViewScreen({
     super.key,
     required this.reportId,
     required this.reportLabel,
-    required this.reportDescription, // ✅ Passed from ReportsScreen
-    required this.reportIcon, // Optional
+    required this.reportDescription,
+    required this.reportIcon,
   });
 
   @override
@@ -54,38 +54,38 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
     }
   }
 
-  Future<void> _generatePDF() async {
+  Future<void> _generateReport() async {
     try {
       final dbService = Provider.of<DatabaseService>(context, listen: false);
       final userProfile = await dbService.getUserProfile();
-      if (userProfile == null) throw Exception('User profile not found');
+
+      if (userProfile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found. Please set up your profile first.')),
+        );
+        return;
+      }
 
       final bpRecords = await dbService.getBPRecordsDateRange(startDate: _startDate, endDate: _endDate);
       final sugarRecords = await dbService.getSugarRecordsDateRange(startDate: _startDate, endDate: _endDate);
 
-      Uint8List pdfBytes;
+      if (!mounted) return;
 
-      switch (widget.reportId) {
-        case 'individual_trends':
-          final service = IndividualHealthTrendService();
-          final pdf = await service.generatePdf(
-            sugarReadings: sugarRecords,
-            bpReadings: bpRecords,
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => GeneratedReportViewerScreen(
             userProfile: userProfile,
+            sugarRecords: sugarRecords,
+            bpRecords: bpRecords,
             startDate: _startDate,
             endDate: _endDate,
-          );
-          pdfBytes = await pdf.save();
-          break;
-        default:
-          throw UnimplementedError('PDF generation not implemented for ${widget.reportId}');
-      }
-
-      if (pdfBytes.isNotEmpty) {
-        await Printing.sharePdf(bytes: pdfBytes, filename: '${widget.reportLabel.replaceAll(' ', '_')}.pdf');
-      }
+          ),
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating report: $e')),
+      );
     }
   }
 
@@ -93,28 +93,30 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Report Generation'), // ✅ Static title
+        title: const Text('Report Generation'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisSize: MainAxisSize.min, // Ensures the row only takes up as much space as its children
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   widget.reportIcon ?? Icons.insert_drive_file,
                   size: 60,
                   color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
-                const SizedBox(width: 16), // A bit of space between the icon and the text
-                Text(
-                  widget.reportLabel,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.titleLarge?.color,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    widget.reportLabel,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                    ),
                   ),
                 ),
               ],
@@ -133,8 +135,6 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // ✅ High-contrast note with icon
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -152,7 +152,7 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
                       'Note: Selecting a date range of more than 3 months may cause the app to lag or slow.',
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.black87, // ✅ High contrast
+                        color: Colors.black87,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.left,
@@ -162,38 +162,18 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
               ),
             ),
             const SizedBox(height: 32),
-
-            // ✅ Generate Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    //Generate PDF for widget.reportId
-                    _generatePDF();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('PDF generation in process')),
-                    );
-                  },
-                  icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('Generate PDF'),
+            Center(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Generate Excel for widget.reportId
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Excel generation not implemented yet.')),
-                    );
-                  },
-                  icon: const Icon(Icons.table_chart),
-                  label: const Text('Generate Excel'),
-                ),
-              ],
+                onPressed: _generateReport,
+                icon: const Icon(Icons.article),
+                label: const Text('Generate Report'),
+              ),
             ),
-
             const SizedBox(height: 32),
-
-            // ✅ Report Description (carried from ReportsScreen)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -238,12 +218,12 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[400]!),
+          border: Border.all(color: Colors. grey[400]!),
           borderRadius: BorderRadius.circular(12),
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors. grey.withAlpha(25),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

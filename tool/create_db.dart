@@ -22,7 +22,8 @@ CREATE TABLE sugar_records(
   mealTimeCategory TEXT,
   mealType TEXT,
   value REAL,
-  status TEXT
+  status TEXT,
+  notes TEXT
 )
       ''');
 
