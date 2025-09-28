@@ -15,7 +15,7 @@ class DatabaseService {
   DatabaseService._internal();
 
   // Define the database version
-  static const int _dbVersion = 10;
+  static const int _dbVersion = 11;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -91,6 +91,9 @@ class DatabaseService {
       case 10:
         await _addColumns(db, 'sugar_records', {'notes': 'TEXT'});
         break;
+      case 11:
+        await _addColumns(db, 'bp_records', {'notes': 'TEXT'});
+        break;
       default:
         debugPrint('No migration found for version $version');
         break;
@@ -126,7 +129,8 @@ class DatabaseService {
     systolic INTEGER,
     diastolic INTEGER,
     pulseRate INTEGER,
-    status TEXT
+    status TEXT,
+    notes TEXT
   ''';
 
   static const String _settingsSchema = '''
@@ -337,6 +341,14 @@ class DatabaseService {
   Future<int> deleteBPRecord(int id) async {
     final db = await database;
     return await db.delete('bp_records', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // === Sample Data Operations ===
+  Future<void> deleteSampleData() async {
+    final db = await database;
+    int sugarDeletions = await db.delete('sugar_records', where: 'notes = ?', whereArgs: ['sample_data']);
+    int bpDeletions = await db.delete('bp_records', where: 'notes = ?', whereArgs: ['sample_data']);
+    debugPrint('Deleted $sugarDeletions sample sugar records and $bpDeletions sample BP records.');
   }
 
   // === User Profile Operations ===

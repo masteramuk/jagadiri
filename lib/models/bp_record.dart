@@ -24,6 +24,7 @@ class BPRecord {
   final int diastolic;
   final int pulseRate;
   final BPStatus status;
+  final String? notes;
 
   BPRecord({
     this.id,
@@ -34,6 +35,7 @@ class BPRecord {
     required this.diastolic,
     required this.pulseRate,
     required this.status,
+    this.notes,
   });
 
   // Factory constructor to create a BPRecord from a JSON map (for local storage)
@@ -48,6 +50,7 @@ class BPRecord {
       pulseRate: json['pulseRate'],
       status: BPStatus.values.firstWhere(
           (e) => e.toString().split('.').last == json['status']),
+      notes: json['notes'],
     );
   }
 
@@ -62,6 +65,7 @@ class BPRecord {
       'diastolic': diastolic,
       'pulseRate': pulseRate,
       'status': status.toString().split('.').last,
+      'notes': notes,
     };
   }
 
@@ -78,6 +82,7 @@ class BPRecord {
       pulseRate: map['pulseRate'],
       status: BPStatus.values.firstWhere(
           (e) => e.toString().split('.').last == map['status']),
+      notes: map['notes'],
     );
   }
 
@@ -92,6 +97,7 @@ class BPRecord {
       'diastolic': diastolic,
       'pulseRate': pulseRate,
       'status': status.toString().split('.').last,
+      'notes': notes,
     };
   }
 

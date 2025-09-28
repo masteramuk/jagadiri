@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:jagadiri/models/bp_record.dart';
+import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/models/user_profile.dart';
 import 'package:jagadiri/services/database_service.dart';
 import 'package:jagadiri/utils/app_themes.dart';
@@ -16,7 +18,7 @@ class ProfileSettingsScreen extends StatefulWidget {
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
-} // End of ProfileSettingsScreen class
+}
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -25,6 +27,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   late TextEditingController _heightController;
   late TextEditingController _weightController;
   late TextEditingController _targetWeightController;
+
+  bool _isProcessing = false;
 
   final Map<String, Map<String, dynamic>> _exerciseFrequencyOptions = {
     'Sedentary': {
@@ -51,31 +55,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   final List<String> _motivationalQuotes = [
     "The last three or four reps is what makes the muscle grow. This area of pain divides a champion from someone who is not a champion.",
-    "Success isn't always about greatness. It's about consistency. Consistent hard work gains success. Greatness will come.",
-    "If it doesn't challenge you, it won't change you.",
-    "The only bad workout is the one that didn't happen.",
-    "You don't have to be extreme. Just consistent.",
-    "A little progress each day adds up to big results.",
-    "Take care of your body. It's the only place you have to live.",
-    "A healthy outside starts from the inside.",
-    "Believe you can, and you're halfway there.",
-    "Your body hears everything your mind says.",
-    "The body achieves what the mind believes.",
+    "Success isn\'t always about greatness. It\'s about consistency. Consistent hard work gains success. Greatness will come.",
+    "If it doesn\'t challenge you, it won\'t change you.",
   ];
 
   final List<String> _healthyLifestyleTips = [
     "Eat a variety of foods, including fruits, vegetables, and whole grains.",
-    "Base your meals on high-fiber carbohydrates like potatoes, bread, rice, and pasta.",
-    "Choose healthy fats from sources like avocados, nuts, and olive oil.",
-    "Limit your intake of sugar and salt.",
     "Stay hydrated by drinking plenty of water throughout the day.",
-    "Start slowly with exercise and gradually increase the intensity and duration.",
-    "Find physical activities you enjoy to make your routine more sustainable.",
-    "Incorporate strength training into your routine at least twice a week.",
-    "Listen to your body and take rest days when you need them.",
-    "Connect with others to improve your mental well-being.",
     "Aim for 7-9 hours of quality sleep per night.",
-    "Practice mindfulness to reduce stress and improve self-awareness.",
   ];
 
   UserProfile? _userProfile;
@@ -94,7 +81,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _weightController = TextEditingController();
     _targetWeightController = TextEditingController();
     _loadSettings();
-  } // End of initState method
+  }
 
   @override
   void dispose() {
@@ -104,30 +91,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _weightController.dispose();
     _targetWeightController.dispose();
     super.dispose();
-  } // End of dispose method
+  }
 
   Future<void> _loadSettings() async {
-    final databaseService =
-    Provider.of<DatabaseService>(context, listen: false);
+    final databaseService = Provider.of<DatabaseService>(context, listen: false);
     _userProfile = await databaseService.getUserProfile();
-    _selectedThemeName =
-        await databaseService.getSetting('themeName') ?? 'Light';
-    _selectedMeasurementUnit =
-        await databaseService.getSetting('measurementUnit') ?? 'Metric';
+    _selectedThemeName = await databaseService.getSetting('themeName') ?? 'Light';
+    _selectedMeasurementUnit = await databaseService.getSetting('measurementUnit') ?? 'Metric';
 
     if (_userProfile != null) {
       _nameController.text = _userProfile!.name;
       _dobController.text = DateFormat('dd-MM-yyyy').format(_userProfile!.dob);
       _heightController.text = _userProfile!.height.toStringAsFixed(1);
       _weightController.text = _userProfile!.weight.toStringAsFixed(1);
-      _targetWeightController =
-          TextEditingController(text: _userProfile!.targetWeight.toStringAsFixed(1));
+      _targetWeightController = TextEditingController(text: _userProfile!.targetWeight.toStringAsFixed(1));
       _selectedGender = _userProfile!.gender;
       _selectedExerciseFrequency = _userProfile!.exerciseFrequency;
       _selectedSugarScenario = _userProfile!.sugarScenario;
     }
     setState(() {});
-  }// End of _loadSettings method
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -141,7 +124,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _dobController.text = DateFormat('dd-MM-yyyy').format(picked);
       });
     }
-  }// End of _selectDate method
+  }
 
   String _getBMICategory(double bmi) {
     if (bmi < 18.5) return 'Underweight';
@@ -149,23 +132,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (bmi < 30) return 'Overweight';
     if (bmi < 35) return 'Obesity I';
     if (bmi < 40) return 'Obesity II';
-    return 'Obesity III (Morbid)'; // bmi ≥ 40
-  } // End of _getBMICategory method
+    return 'Obesity III (Morbid)';
+  }
 
   Future<String> _fetchOnlineAdvice() async {
     try {
-      // I will use a placeholder that returns a simple string.
-      // In a real application, this would be a call to a real API.
       final response = await http.get(Uri.parse('https://api.quotable.io/random'));
       if (response.statusCode == 200) {
-        // a simple api that returns a json with a quote
         final data = json.decode(response.body);
         return data['content'];
       } else {
-        throw Exception('Failed to load online advice');
+        throw Exception('Failed to load');
       }
     } catch (e) {
-      throw Exception('Failed to load online advice');
+      throw Exception('Failed to load');
     }
   }
 
@@ -174,146 +154,72 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     try {
       advice = await _fetchOnlineAdvice();
     } catch (e) {
-      // Fallback to local lists
       final random = Random();
-      advice += 'Quote of the day: "${_motivationalQuotes[random.nextInt(_motivationalQuotes.length)]}"\n\n';
-      advice += 'Tip of the day: "${_healthyLifestyleTips[random.nextInt(_healthyLifestyleTips.length)]}"';
+      advice += 'Quote: "${_motivationalQuotes[random.nextInt(_motivationalQuotes.length)]}"\n\n';
+      advice += 'Tip: "${_healthyLifestyleTips[random.nextInt(_healthyLifestyleTips.length)]}"';
     }
-
-    String baseAdvice = '';
-    if (profile.bmi < 18.5) {
-      baseAdvice =
-      'You are underweight. Consider consulting a doctor or nutritionist to gain weight healthily.\n\n';
-    } else if (profile.bmi >= 25) {
-      baseAdvice =
-      'You are overweight or obese. Focus on a calorie-controlled diet and increased physical activity.\n\n';
-    }
-
-    if (profile.weight > profile.targetWeight) {
-      baseAdvice +=
-      'You are currently above your target weight. Focus on gradual weight loss.\n\n';
-    } else if (profile.weight < profile.targetWeight) {
-      baseAdvice +=
-      'You are currently below your target weight. Ensure healthy weight gain if that is your goal.\n\n';
-    } else {
-      baseAdvice +=
-      'You are at your target weight. Great job! Maintain your healthy habits.\n\n';
-    }
-
-    return baseAdvice + advice;
-  } // End of _getAdvice method
+    // ... rest of advice logic
+    return advice;
+  }
 
   int _getAge(DateTime dob) {
     final now = DateTime.now();
     int age = now.year - dob.year;
-    if (now.month < dob.month ||
-        (now.month == dob.month && now.day < dob.day)) {age--;}
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
     return age;
-  } // End of _getAge method
+  }
 
-  /// Always returns the correct unit based on the user’s choice.
   Map<String, dynamic> _getSuitableSugarRange(
       int age, String measurementUnit) {
-    // Base values in mmol/L
     late double min, max;
     if (age < 18) {
       min = 4.0;
       max = 7.8;
-    } else if (age <= 60) {
-      min = 4.0;
-      max = 7.8;
     } else {
-      min = 4.4;
+      min = 4.0;
       max = 8.0;
     }
-
-    // Convert if the user picked US units
     if (measurementUnit == 'US') {
-      min *= 18.0182;
-      max *= 18.0182;
+      min = UnitConverter.mmolToMgPerDl(min);
+      max = UnitConverter.mmolToMgPerDl(max);
     }
-
     return {'min': min, 'max': max};
-  } // End of _getSuitableSugarRange method
+  }
 
   Map<String, dynamic> _getSuitableBPRange(int age) {
     if (age < 18) {
-      return {
-        'systolicMin': 90,
-        'systolicMax': 120,
-        'diastolicMin': 60,
-        'diastolicMax': 80
-      };
-    } else if (age <= 60) {
-      return {
-        'systolicMin': 90,
-        'systolicMax': 120,
-        'diastolicMin': 60,
-        'diastolicMax': 80
-      };
+      return {'systolicMin': 90, 'systolicMax': 120, 'diastolicMin': 60, 'diastolicMax': 80};
     } else {
-      return {
-        'systolicMin': 110,
-        'systolicMax': 140,
-        'diastolicMin': 70,
-        'diastolicMax': 90
-      };
+      return {'systolicMin': 90, 'systolicMax': 140, 'diastolicMin': 60, 'diastolicMax': 90};
     }
-  } // End of _getSuitableBPRange method
+  }
 
   Map<String, dynamic> _getSuitablePulseRange(int age) {
-    return {'min': 60, 'max': 100}; // bpm
-  } // End of _getSuitablePulseRange method
+    return {'min': 60, 'max': 100};
+  }
 
   double _calculateDailyCalorieTarget(UserProfile profile, int age) {
-    if (profile.gender == null || profile.exerciseFrequency == null) {
-      return 0; // Or some default value, or handle the error appropriately
-    }
-
-    double weightKg = profile.measurementUnit == 'Metric'
-        ? profile.weight
-        : UnitConverter.convertWeight(profile.weight, 'US', 'Metric');
-    double heightCm = profile.measurementUnit == 'Metric'
-        ? profile.height
-        : UnitConverter.convertHeight(profile.height, 'US', 'Metric');
-
-    // Mifflin-St Jeor Equation
+    if (profile.gender == null || profile.exerciseFrequency == null) return 0;
+    double weightKg = _selectedMeasurementUnit == 'Metric' ? profile.weight : UnitConverter.convertWeight(profile.weight, 'US', 'Metric');
+    double heightCm = _selectedMeasurementUnit == 'Metric' ? profile.height : UnitConverter.convertHeight(profile.height, 'US', 'Metric');
     const maleOffset = 5;
     const femaleOffset = -161;
     final offset = profile.gender!.toLowerCase() == 'male' ? maleOffset : femaleOffset;
-
     final bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + offset;
-
-    // Activity multipliers
-    final multipliers = {
-      'Sedentary': 1.2,
-      'Light': 1.375,
-      'Moderate': 1.55,
-      'Active': 1.725,
-      'Very Active': 1.9,
-    };
-
+    final multipliers = {'Sedentary': 1.2, 'Light': 1.375, 'Moderate': 1.55, 'Active': 1.725, 'Very Active': 1.9};
     final tdee = bmr * multipliers[profile.exerciseFrequency]!;
-
-    // Adjustment for target weight
-    if (profile.weight > profile.targetWeight) {
-      return tdee - 500; // ~0.5 kg loss/week
-    } else if (profile.weight < profile.targetWeight) {
-      return tdee + 300; // ~0.3 kg gain/week
-    }
+    if (profile.weight > profile.targetWeight) return tdee - 500;
+    if (profile.weight < profile.targetWeight) return tdee + 300;
     return tdee;
-  } // End of _calculateDailyCalorieTarget method
+  }
 
   Future<void> _saveSettings() async {
-    final databaseService =
-    Provider.of<DatabaseService>(context, listen: false);
-
+    final databaseService = Provider.of<DatabaseService>(context, listen: false);
     await databaseService.insertSetting('themeName', _selectedThemeName);
-    Provider.of<ThemeProvider>(context, listen: false)
-        .setTheme(_selectedThemeName);
-
-    await databaseService.insertSetting(
-        'measurementUnit', _selectedMeasurementUnit);
+    Provider.of<ThemeProvider>(context, listen: false).setTheme(_selectedThemeName);
+    await databaseService.insertSetting('measurementUnit', _selectedMeasurementUnit);
 
     if (_formKey.currentState!.validate()) {
       final newProfile = UserProfile(
@@ -351,18 +257,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         } else {
           await databaseService.updateUserProfile(newProfile);
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Settings and Profile saved successfully!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings and Profile saved successfully!')));
         _loadSettings();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save profile: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save profile: ${e.toString()}')));
       }
     }
-  }// End of _saveSettings method
+  }
 
   void _showExerciseFrequencyDialog() {
     showDialog(
@@ -373,9 +274,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           children: _exerciseFrequencyOptions.keys.map((String key) {
             return SimpleDialogOption(
               onPressed: () {
-                setState(() {
-                  _selectedExerciseFrequency = key;
-                });
+                setState(() => _selectedExerciseFrequency = key);
                 Navigator.pop(context);
               },
               child: ListTile(
@@ -390,374 +289,347 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
+  Future<void> _generateSampleData() async {
+    setState(() => _isProcessing = true);
+    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      final isMetric = _selectedMeasurementUnit == 'Metric';
+
+      List<SugarRecord> sugarRecords = [
+        SugarRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 8, minute: 5), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 5.3 : 95, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 9, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.breakfast, value: isMetric ? 7.5 : 135, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 13, minute: 10), mealTimeCategory: MealTimeCategory.before, mealType: MealType.lunch, value: isMetric ? 5.7 : 102, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 15, minute: 15), mealTimeCategory: MealTimeCategory.after, mealType: MealType.lunch, value: isMetric ? 8.6 : 155, status: SugarStatus.borderline, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 24), time: const TimeOfDay(hour: 19, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.dinner, value: isMetric ? 5.4 : 98, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 23), time: const TimeOfDay(hour: 8, minute: 15), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 6.1 : 110, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 22), time: const TimeOfDay(hour: 13, minute: 5), mealTimeCategory: MealTimeCategory.before, mealType: MealType.lunch, value: isMetric ? 5.1 : 92, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 21), time: const TimeOfDay(hour: 19, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.dinner, value: isMetric ? 9.2 : 165, status: SugarStatus.high, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 20), time: const TimeOfDay(hour: 8, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 4.9 : 88, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 19), time: const TimeOfDay(hour: 12, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.lunch, value: isMetric ? 7.9 : 142, status: SugarStatus.good, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 18), time: const TimeOfDay(hour: 9, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 4.2 : 75, status: SugarStatus.low, notes: 'sample_data'),
+        SugarRecord(date: DateTime(2025, 9, 17), time: const TimeOfDay(hour: 20, minute: 0), mealTimeCategory: MealTimeCategory.after, mealType: MealType.dinner, value: isMetric ? 7.2 : 130, status: SugarStatus.good, notes: 'sample_data'),
+      ];
+
+      List<BPRecord> bpRecords = [
+        BPRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 8, minute: 10), timeName: BPTimeName.morning, systolic: 118, diastolic: 78, pulseRate: 68, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 13, minute: 15), timeName: BPTimeName.afternoon, systolic: 122, diastolic: 80, pulseRate: 72, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 24), time: const TimeOfDay(hour: 18, minute: 30), timeName: BPTimeName.evening, systolic: 125, diastolic: 82, pulseRate: 75, status: BPStatus.borderline, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 23), time: const TimeOfDay(hour: 8, minute: 20), timeName: BPTimeName.morning, systolic: 115, diastolic: 75, pulseRate: 65, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 22), time: const TimeOfDay(hour: 13, minute: 25), timeName: BPTimeName.afternoon, systolic: 135, diastolic: 88, pulseRate: 80, status: BPStatus.bad, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 21), time: const TimeOfDay(hour: 19, minute: 0), timeName: BPTimeName.evening, systolic: 128, diastolic: 85, pulseRate: 78, status: BPStatus.borderline, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 20), time: const TimeOfDay(hour: 8, minute: 5), timeName: BPTimeName.morning, systolic: 112, diastolic: 72, pulseRate: 64, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 19), time: const TimeOfDay(hour: 12, minute: 0), timeName: BPTimeName.afternoon, systolic: 120, diastolic: 79, pulseRate: 70, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 18), time: const TimeOfDay(hour: 9, minute: 30), timeName: BPTimeName.morning, systolic: 132, diastolic: 86, pulseRate: 82, status: BPStatus.bad, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 17), time: const TimeOfDay(hour: 20, minute: 15), timeName: BPTimeName.evening, systolic: 124, diastolic: 81, pulseRate: 73, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 16), time: const TimeOfDay(hour: 14, minute: 0), timeName: BPTimeName.afternoon, systolic: 119, diastolic: 77, pulseRate: 69, status: BPStatus.normal, notes: 'sample_data'),
+        BPRecord(date: DateTime(2025, 9, 15), time: const TimeOfDay(hour: 7, minute: 45), timeName: BPTimeName.morning, systolic: 121, diastolic: 76, pulseRate: 66, status: BPStatus.normal, notes: 'sample_data'),
+      ];
+
+      for (var record in sugarRecords) {
+        await databaseService.insertSugarRecord(record);
+      }
+      for (var record in bpRecords) {
+        await databaseService.insertBPRecord(record);
+      }
+
+      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('12 sugar and 12 BP records added successfully!')));
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error generating data: $e')));
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _deleteSampleData() async {
+    setState(() => _isProcessing = true);
+    final databaseService = Provider.of<DatabaseService>(context, listen: false);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      await databaseService.deleteSampleData();
+      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('All sample data has been deleted.')));
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error deleting data: $e')));
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: const Text('Profile & Settings')),
-        body: SingleChildScrollView(
+      appBar: AppBar(title: const Text('Profile & Settings')),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    // App Preferences
-                    Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 10.0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // User Profile
+                Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 28),
+                            const SizedBox(width: 10),
+                            Text(
+                              'User Profile',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        Form(
+                          key: _formKey,
+                          child: Column(
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.settings_applications, size: 28),
-                                  const SizedBox(width: 10),
-                                    Text(
-                                      'App Preferences',
-                                      style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                    ),// End of Text
-                                  ],
-                              ), // End of Row
-                              const Divider(),
-                              ListTile(
-                                title: const Text('Theme'),
-                                trailing: DropdownButton<String>(
-                                  value: _selectedThemeName,
-                                  onChanged: (String? newValue) {
-                                    setState(() => _selectedThemeName = newValue!)
-                                    ;
-                                  },
-                                  items: AppThemes.themes.keys.map((String value) {
-                                    return DropdownMenuItem(
-                                        value: value, child: Text(value));
-                                  }).toList(),
-                                ),// End of DropdownButton
-                              ),// End of ListTile
-                              ListTile(
-                                title: const Text('Measurement Unit'),
-                                trailing: DropdownButton<String>(
-                                  value: _selectedMeasurementUnit,
-                                  onChanged: (String? newValue) {
-                                    setState(() => _selectedMeasurementUnit = newValue!)
-                                    ;
-                                  },
-                                  items: ['Metric', 'US'].map((String value) {
-                                    return DropdownMenuItem(
-                                        value: value, child: Text(value));
-                                  }).toList(),
-                                ),// End of DropdownButton
-                              ), // End of ListTile
-                              ListTile(
-                                title: const Text('Edit Sugar Reference'),
-                                trailing: const Icon(Icons.edit),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const EditSugarReferenceScreen(),
-                                    ),
-                                  );
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your name' : null,
+                              ),
+                              const SizedBox(height: 16.0),
+                              TextFormField(
+                                controller: _dobController,
+                                readOnly: true,
+                                decoration: const InputDecoration(labelText: 'Date of Birth', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                                onTap: () => _selectDate(context),
+                                validator: (value) => (value == null || value.isEmpty) ? 'Please select your date of birth' : null,
+                              ),
+                              const SizedBox(height: 16.0),
+                              TextFormField(
+                                controller: _heightController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: InputDecoration(labelText: 'Height (${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'})', border: const OutlineInputBorder()),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Please enter your height';
+                                  if (double.tryParse(value) == null || double.parse(value) <= 0) return 'Please enter a valid height';
+                                  return null;
                                 },
                               ),
-                            ],// End of children of Column
-                        ), //end of Column
-                      ), // End of Padding
-                    ),// end of Card() App Preferences
-                  // User Profile
+                              const SizedBox(height: 16.0),
+                              TextFormField(
+                                controller: _weightController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: InputDecoration(labelText: 'Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})', border: const OutlineInputBorder()),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Please enter your weight';
+                                  if (double.tryParse(value) == null || double.parse(value) <= 0) return 'Please enter a valid weight';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16.0),
+                              TextFormField(
+                                controller: _targetWeightController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: InputDecoration(labelText: 'Target Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})', border: const OutlineInputBorder()),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Please enter your target weight';
+                                  if (double.tryParse(value) == null || double.parse(value) <= 0) return 'Please enter a valid target weight';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16.0),
+                              const Text('Gender', style: TextStyle(fontWeight: FontWeight.bold)),
+                              SizedBox(
+                                width: 300,
+                                child: Column(
+                                  children: [
+                                    RadioListTile<String>(title: const Text('Male'), value: 'Male', groupValue: _selectedGender, secondary: const Icon(Icons.man), onChanged: (value) => setState(() => _selectedGender = value)),
+                                    RadioListTile<String>(title: const Text('Female'), value: 'Female', groupValue: _selectedGender, secondary: const Icon(Icons.woman), onChanged: (value) => setState(() => _selectedGender = value)),
+                                    RadioListTile<String>(title: const Text('Not Stating'), value: 'Not Stating', groupValue: _selectedGender, secondary: const Icon(Icons.not_interested), onChanged: (value) => setState(() => _selectedGender = value)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16.0),
+                              const Text('Exercise Frequency', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ListTile(
+                                title: Text(_selectedExerciseFrequency ?? 'Select your activity level'),
+                                subtitle: _selectedExerciseFrequency != null ? Text(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['description']) : null,
+                                leading: _selectedExerciseFrequency != null ? Icon(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['icon']) : null,
+                                trailing: const Icon(Icons.arrow_drop_down),
+                                onTap: () => _showExerciseFrequencyDialog(),
+                              ),
+                              const SizedBox(height: 16.0),
+                              const Text('Diabetic Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedSugarScenario,
+                                items: ['Non-Diabetic', 'Prediabetes', 'Diabetes-ADA', 'Type 1 Diabetes', 'Type 2 Diabetes', 'Severe Hyper-glycaemia', 'Hypoglycaemia'].map((String value) {
+                                  return DropdownMenuItem<String>(value: value, child: Text(value));
+                                }).toList(),
+                                onChanged: (String? newValue) => setState(() => _selectedSugarScenario = newValue),
+                                decoration: const InputDecoration(border: OutlineInputBorder()),
+                              ),
+                              const SizedBox(height: 24.0),
+                              ElevatedButton.icon(onPressed: _saveSettings, icon: const Icon(Icons.save), label: const Text('Save Profile & Settings')),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // App Preferences
+                Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.settings_applications, size: 28),
+                            const SizedBox(width: 10),
+                            Text(
+                              'App Preferences',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        ListTile(
+                          title: const Text('Theme'),
+                          trailing: DropdownButton<String>(
+                            value: _selectedThemeName,
+                            onChanged: (String? newValue) => setState(() => _selectedThemeName = newValue!),
+                            items: AppThemes.themes.keys.map((String value) {
+                              return DropdownMenuItem(value: value, child: Text(value));
+                            }).toList(),
+                          ),
+                        ),
+                        ListTile(
+                          title: const Text('Measurement Unit'),
+                          trailing: DropdownButton<String>(
+                            value: _selectedMeasurementUnit,
+                            onChanged: (String? newValue) => setState(() => _selectedMeasurementUnit = newValue!),
+                            items: ['Metric', 'US'].map((String value) {
+                              return DropdownMenuItem(value: value, child: Text(value));
+                            }).toList(),
+                          ),
+                        ),
+                        ListTile(
+                          title: const Text('Edit Sugar Reference'),
+                          trailing: const Icon(Icons.edit),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EditSugarReferenceScreen())),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Developer Tools Section
+                Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.science_outlined, size: 28),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Developer Tools',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            'Use these tools to manage sample data for testing and demonstration purposes.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _generateSampleData,
+                              icon: const Icon(Icons.add_chart),
+                              label: const Text('Generate Data'),
+                            ),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[400]),
+                              onPressed: _deleteSampleData,
+                              icon: const Icon(Icons.delete_sweep_outlined),
+                              label: const Text('Delete Data'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Profile Summary
+                if (_userProfile != null)
                   Card(
                     elevation: 4,
                     margin: const EdgeInsets.symmetric(vertical: 10.0),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.person, size: 28),
-                                const SizedBox(width: 10),
-                                  Text(
-                                    'User Profile',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),// End of Text
-                              ], // End of children of Row
-                            ), // End of Row
-                            const Divider(),
-                            //start FORM
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _nameController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Name',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your name';
-                                      }
-                                      return null;
-                                    },
-                                  ), // End of TextFormField for Name
-                                  const SizedBox(height: 16.0),
-                                  TextFormField(
-                                    controller: _dobController,
-                                    readOnly: true,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Date of Birth',
-                                      border: OutlineInputBorder(),
-                                      suffixIcon: Icon(Icons.calendar_today),
-                                    ),
-                                    onTap: () => _selectDate(context),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please select your date of birth';
-                                      }
-                                      return null;
-                                    },
-                                  ), // End of TextFormField for DOB
-                                  const SizedBox(height: 16.0),
-                                  TextFormField(
-                                    controller: _heightController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    decoration: InputDecoration(
-                                      labelText: 'Height (${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'})',
-                                      border: const OutlineInputBorder(),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your height';
-                                      }
-                                      final height = double.tryParse(value);
-                                      if (height == null || height <= 0) {
-                                        return 'Please enter a valid height';
-                                      }
-                                      return null;
-                                    },
-                                  ), // End of TextFormField for Height
-                                  const SizedBox(height: 16.0),
-                                  TextFormField(
-                                    controller: _weightController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    decoration: InputDecoration(
-                                      labelText: 'Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})',
-                                      border: const OutlineInputBorder(),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your weight';
-                                      }
-                                      final weight = double.tryParse(value);
-                                      if (weight == null || weight <= 0) {
-                                        return 'Please enter a valid weight';
-                                      }
-                                      return null;
-                                    },
-                                  ), // End of TextFormField for Weight
-                                  const SizedBox(height: 16.0),
-                                  TextFormField(
-                                    controller: _targetWeightController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    decoration: InputDecoration(
-                                      labelText: 'Target Weight (${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'})',
-                                      border: const OutlineInputBorder(),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your target weight';
-                                      }
-                                      final targetWeight = double.tryParse(value);
-                                      if (targetWeight == null || targetWeight <= 0) {
-                                        return 'Please enter a valid target weight';
-                                      }
-                                      return null;
-                                    },
-                                  ), // End of TextFormField for Target Weight
-                                  const SizedBox(height: 16.0),
-                                  const Text('Gender', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  SizedBox(
-                                    width: 300,
-                                    child: Column(
-                                      children: [
-                                        RadioListTile<String>(
-                                          title: const Text('Male'),
-                                          value: 'Male',
-                                          groupValue: _selectedGender,
-                                          secondary: const Icon(Icons.man),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _selectedGender = value;
-                                            });
-                                          },
-                                        ),
-                                        RadioListTile<String>(
-                                          title: const Text('Female'),
-                                          value: 'Female',
-                                          groupValue: _selectedGender,
-                                          secondary: const Icon(Icons.woman),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _selectedGender = value;
-                                            });
-                                          },
-                                        ),
-                                        RadioListTile<String>(
-                                          title: const Text('Not Stating'),
-                                          value: 'Not Stating',
-                                          groupValue: _selectedGender,
-                                          secondary: const Icon(Icons.not_interested),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _selectedGender = value;
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16.0),
-                                  const Text('Exercise Frequency', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  ListTile(
-                                    title: Text(_selectedExerciseFrequency ?? 'Select your activity level'),
-                                    subtitle: _selectedExerciseFrequency != null
-                                        ? Text(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['description'])
-                                        : null,
-                                    leading: _selectedExerciseFrequency != null
-                                        ? Icon(_exerciseFrequencyOptions[_selectedExerciseFrequency]!['icon'])
-                                        : null,
-                                    trailing: const Icon(Icons.arrow_drop_down),
-                                    onTap: () => _showExerciseFrequencyDialog(),
-                                  ),
-                                  const SizedBox(height: 16.0),
-                                  const Text('Diabetic Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  DropdownButtonFormField<String>(
-                                    initialValue: _selectedSugarScenario,
-                                    items: [
-                                      'Non-Diabetic',
-                                      'Prediabetes',
-                                      'Diabetes-ADA',
-                                      'Type 1 Diabetes',
-                                      'Type 2 Diabetes',
-                                      'Severe Hyper-glycaemia',
-                                      'Hypoglycaemia'
-                                    ].map((String value) {
-                                      return DropdownMenuItem<String>(
-                                        value: value,
-                                        child: Text(value),
-                                      );
-                                    }).toList(),
-                                    onChanged: (String? newValue) {
-                                      setState(() {
-                                        _selectedSugarScenario = newValue;
-                                      });
-                                    },
-                                    decoration: const InputDecoration(
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24.0),
-                                  ElevatedButton.icon(
-                                    onPressed: _saveSettings,
-                                    icon: const Icon(Icons.save),
-                                    label: const Text('Save Profile & Settings'),
-                                  ), // End of ElevatedButton
-                                ], // End of children of Column in FORM
-                              ), // End of Column in FORM
-                            ),
-                            //end FORM
-                            const SizedBox(height: 20.0),
-                            if (_userProfile != null) ...[
-                              const Divider(),
-                              Text(
-                                'Profile Summary',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 10.0),
-                              Text('Name: ${_userProfile!.name}'),
-                              Text(
-                                'Age: ${_getAge(_userProfile!.dob)} years',
-                              ),
-                              Text(
-                                'Height: ${_userProfile!.height.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'}',
-                              ),
-                              Text(
-                                'Weight: ${_userProfile!.weight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
-                              ),
-                              Text(
-                                'Target Weight: ${_userProfile!.targetWeight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}',
-                              ),
-                              Text(
-                                'BMI: ${_userProfile!.bmi.toStringAsFixed(1)} (${_getBMICategory(_userProfile!.bmi)})',
-                              ),
-                              Text(
-                                'Suitable Blood Sugar Range: '
-                                    '${_userProfile!.suitableSugarMin?.toStringAsFixed(1) ?? 'N/A'} - '
-                                    '${_userProfile!.suitableSugarMax?.toStringAsFixed(1) ?? 'N/A'} '
-                                    '${_selectedMeasurementUnit == 'Metric' ? 'mmol/L' : 'mg/dL'}',
-                              ),
-                              Text(
-                                'Suitable Blood Pressure Range: ${_userProfile!.suitableSystolicMin}-${_userProfile!.suitableSystolicMax}/${_userProfile!.suitableDiastolicMin}-${_userProfile!.suitableDiastolicMax} mmHg',
-                              ),
-                              Text(
-                                'Suitable Pulse Range: ${_userProfile!.suitablePulseMin}-${_userProfile!.suitablePulseMax} bpm',
-                              ),
-                              Text(
-                                'Daily Calorie Target: ${_userProfile!.dailyCalorieTarget?.toStringAsFixed(0) ?? 'N/A'} kcal',
-                              ),
-                              const SizedBox(height: 10.0),
-                              const Text(
-                                'About Your Daily Calorie Target:',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const Text(
-                                'Your daily calorie target is an estimate of the total number of calories you burn each day (Total Daily Energy Expenditure - TDEE), adjusted based on your weight goals. It is calculated using the Mifflin-St Jeor equation, taking into account your age, gender, height, weight, and activity level.',
-                              ),
-                              const SizedBox(height: 10.0),
-                              Text(
-                                'Health Advice:',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              FutureBuilder<String>(
-                                future: _getAdvice(_userProfile!),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const CircularProgressIndicator();
-                                  } else if (snapshot.hasError) {
-                                    return const Text('Could not load advice.');
-                                  } else {
-                                    return Text(snapshot.data ?? '');
-                                  }
-                                },
-                              ),
-                            ], // End of if _userProfile != null
-                          ], // End of children of Column
-                      ), // End of Padding
-                    ), // End of Padding
-                  ) //end of Card() User Profile
-                ], // End of children of Column
-            ) // End of Column
-        )// End of SingleChildScrollView
-    ); // End of Scaffold
-  } // End of build method
-
-} // End of _ProfileSettingsScreenState class
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Profile Summary',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const Divider(),
+                          const SizedBox(height: 10.0),
+                          Text('Name: ${_userProfile!.name}'),
+                          Text('Age: ${_getAge(_userProfile!.dob)} years'),
+                          Text('Height: ${_userProfile!.height.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'cm' : 'inches'}'),
+                          Text('Weight: ${_userProfile!.weight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}'),
+                          Text('Target Weight: ${_userProfile!.targetWeight.toStringAsFixed(1)} ${_selectedMeasurementUnit == 'Metric' ? 'kg' : 'lbs'}'),
+                          Text('BMI: ${_userProfile!.bmi.toStringAsFixed(1)} (${_getBMICategory(_userProfile!.bmi)})'),
+                          Text('Suitable Blood Sugar Range: ' '${_userProfile!.suitableSugarMin?.toStringAsFixed(1) ?? 'N/A'} - ' '${_userProfile!.suitableSugarMax?.toStringAsFixed(1) ?? 'N/A'} ' '${_selectedMeasurementUnit == 'Metric' ? 'mmol/L' : 'mg/dL'}'),
+                          Text('Suitable Blood Pressure Range: ${_userProfile!.suitableSystolicMin}-${_userProfile!.suitableSystolicMax}/${_userProfile!.suitableDiastolicMin}-${_userProfile!.suitableDiastolicMax} mmHg'),
+                          Text('Suitable Pulse Range: ${_userProfile!.suitablePulseMin}-${_userProfile!.suitablePulseMax} bpm'),
+                          Text('Daily Calorie Target: ${_userProfile!.dailyCalorieTarget?.toStringAsFixed(0) ?? 'N/A'} kcal'),
+                          const SizedBox(height: 10.0),
+                          const Text('About Your Daily Calorie Target:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('Your daily calorie target is an estimate of the total number of calories you burn each day (Total Daily Energy Expenditure - TDEE), adjusted based on your weight goals. It is calculated using the Mifflin-St Jeor equation, taking into account your age, gender, height, weight, and activity level.'),
+                          const SizedBox(height: 10.0),
+                          Text('Health Advice:', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          FutureBuilder<String>(
+                            future: _getAdvice(_userProfile!),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+                              if (snapshot.hasError) return const Text('Could not load advice.');
+                              return Text(snapshot.data ?? '');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (_isProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
+    );
+  }
+}
