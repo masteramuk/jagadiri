@@ -36,6 +36,8 @@ class GeneratedReportViewerScreen extends StatefulWidget {
 
 class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScreen> {
   late final String _analysisText;
+  late final PageController _pageController;
+  int _currentPageIndex = 0;
 
   @override
   void initState() {
@@ -46,6 +48,18 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
       bpReadings: widget.bpRecords,
       userProfile: widget.userProfile,
     );
+    _pageController = PageController();
+    _pageController.addListener(() {
+      setState(() {
+        _currentPageIndex = _pageController.page?.round() ?? 0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _savePdf() async {
@@ -60,7 +74,6 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
         userProfile: widget.userProfile,
         startDate: widget.startDate,
         endDate: widget.endDate,
-        // Pass empty bytes for charts as they won't be included
         glucoseChartBytes: Uint8List(0),
         bpChartBytes: Uint8List(0),
         pulseChartBytes: Uint8List(0),
@@ -81,11 +94,9 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
     );
     try {
       final xlsio.Workbook workbook = xlsio.Workbook();
-      // Add Blood Sugar Data
       if (widget.sugarRecords.isNotEmpty) {
         final xlsio.Worksheet sugarSheet = workbook.worksheets[0];
         sugarSheet.name = 'Blood Sugar';
-        // Headers
         sugarSheet.getRangeByName('A1').setText('Date');
         sugarSheet.getRangeByName('B1').setText('Time');
         sugarSheet.getRangeByName('C1').setText('Meal Time');
@@ -93,7 +104,6 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
         sugarSheet.getRangeByName('E1').setText('Value (mg/dL)');
         sugarSheet.getRangeByName('F1').setText('Status');
 
-        // Data
         for (int i = 0; i < widget.sugarRecords.length; i++) {
           final record = widget.sugarRecords[i];
           sugarSheet.getRangeByIndex(i + 2, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
@@ -105,10 +115,8 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
         }
       }
 
-      // Add Blood Pressure Data
       if (widget.bpRecords.isNotEmpty) {
         final xlsio.Worksheet bpSheet = workbook.worksheets.addWithName('Blood Pressure');
-        // Headers
         bpSheet.getRangeByName('A1').setText('Date');
         bpSheet.getRangeByName('B1').setText('Time');
         bpSheet.getRangeByName('C1').setText('Time Name');
@@ -117,7 +125,6 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
         bpSheet.getRangeByName('F1').setText('Pulse (bpm)');
         bpSheet.getRangeByName('G1').setText('Status');
 
-        // Data
         for (int i = 0; i < widget.bpRecords.length; i++) {
           final record = widget.bpRecords[i];
           bpSheet.getRangeByIndex(i + 2, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
@@ -152,33 +159,154 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
       appBar: AppBar(
         title: const Text('Generated Report'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: _savePdf,
-            tooltip: 'Save as PDF',
-          ),
-          IconButton(
-            icon: const Icon(Icons.table_chart),
-            onPressed: _saveExcel,
-            tooltip: 'Save as Excel',
-          ),
+          IconButton(icon: const Icon(Icons.picture_as_pdf), onPressed: _savePdf, tooltip: 'Save as PDF'),
+          IconButton(icon: const Icon(Icons.table_chart), onPressed: _saveExcel, tooltip: 'Save as Excel'),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
-            const SizedBox(height: 16),
-            _buildSummary(widget.bpRecords, widget.sugarRecords),
-            const SizedBox(height: 16),
-            _buildAnalysis(_analysisText),
+      body: Column(
+        children: [
+          _buildPageNavigator(),
+          const Divider(height: 1),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              children: [
+                _buildPageOne(),
+                _buildPageTwo(),
+                _buildPageThree(),
+                _buildPageFour(),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _buildPageNavigator(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageNavigator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(4, (index) {
+          final isSelected = _currentPageIndex == index;
+          return isSelected
+              ? ElevatedButton(
+                  onPressed: () => _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                  child: Text('Page ${index + 1}'),
+                )
+              : OutlinedButton(
+                  onPressed: () => _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                  child: Text('Page ${index + 1}'),
+                );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildPageOne() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
+          const SizedBox(height: 16),
+          _buildSummary(widget.bpRecords, widget.sugarRecords),
+          const SizedBox(height: 16),
+          _buildAnalysis(_analysisText),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageTwo() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Trend Analysis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          if (widget.sugarRecords.isNotEmpty)
+            _buildSection(
+              'Glucose Trend',
+              SizedBox(height: 200, child: IndividualHealthTrendChartGenerator.buildGlucoseChart(widget.sugarRecords)),
+            ),
+          const SizedBox(height: 24),
+          if (widget.bpRecords.isNotEmpty) ...[
+            _buildSection(
+              'Blood Pressure Trend',
+              SizedBox(height: 200, child: IndividualHealthTrendChartGenerator.buildBPChart(widget.bpRecords)),
+            ),
             const SizedBox(height: 24),
-            _buildCharts(),
-            const SizedBox(height: 24),
-            _buildDetailedDataTables(widget.bpRecords, widget.sugarRecords),
+            _buildSection(
+              'Pulse Trend',
+              SizedBox(height: 200, child: IndividualHealthTrendChartGenerator.buildPulseChart(widget.bpRecords)),
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageThree() {
+    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: _buildSection(
+        'Blood Sugar Records',
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: [
+              DataColumn(label: Text('Date', style: headerStyle)),
+              DataColumn(label: Text('Time', style: headerStyle)),
+              DataColumn(label: Text('Meal Time', style: headerStyle)),
+              DataColumn(label: Text('Value', style: headerStyle)),
+              DataColumn(label: Text('Status', style: headerStyle)),
+            ],
+            rows: widget.sugarRecords.map((r) => DataRow(cells: [
+              DataCell(Text(DateFormat('MM-dd').format(r.date))),
+              DataCell(Text(r.time.format(context))),
+              DataCell(Text(r.mealTimeCategory.name)),
+              DataCell(Text(r.value.toStringAsFixed(1))),
+              DataCell(Text(r.status.name)),
+            ])).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageFour() {
+    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: _buildSection(
+        'Blood Pressure & Pulse Records',
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: [
+              DataColumn(label: Text('Date', style: headerStyle)),
+              DataColumn(label: Text('Time', style: headerStyle)),
+              DataColumn(label: Text('Systolic', style: headerStyle)),
+              DataColumn(label: Text('Diastolic', style: headerStyle)),
+              DataColumn(label: Text('Pulse', style: headerStyle)),
+              DataColumn(label: Text('Status', style: headerStyle)),
+            ],
+            rows: widget.bpRecords.map((r) => DataRow(cells: [
+              DataCell(Text(DateFormat('MM-dd').format(r.date))),
+              DataCell(Text(r.time.format(context))),
+              DataCell(Text(r.systolic.toString())),
+              DataCell(Text(r.diastolic.toString())),
+              DataCell(Text(r.pulseRate.toString())),
+              DataCell(Text(r.status.name)),
+            ])).toList(),
+          ),
         ),
       ),
     );
@@ -256,97 +384,6 @@ class _GeneratedReportViewerScreenState extends State<GeneratedReportViewerScree
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCharts() {
-    return Column(
-      children: [
-        if (widget.sugarRecords.isNotEmpty)
-          _buildSection(
-            'Glucose Trend',
-            SizedBox(
-              height: 200,
-              child: IndividualHealthTrendChartGenerator.buildGlucoseChart(widget.sugarRecords),
-            ),
-          ),
-        const SizedBox(height: 16),
-        if (widget.bpRecords.isNotEmpty) ...[
-          _buildSection(
-            'Blood Pressure Trend',
-            SizedBox(
-              height: 200,
-              child: IndividualHealthTrendChartGenerator.buildBPChart(widget.bpRecords),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildSection(
-            'Pulse Trend',
-            SizedBox(
-              height: 200,
-              child: IndividualHealthTrendChartGenerator.buildPulseChart(widget.bpRecords),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildDetailedDataTables(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
-    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (sugarRecords.isNotEmpty)
-          _buildSection(
-            'Blood Sugar Records',
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text('Date', style: headerStyle)),
-                  DataColumn(label: Text('Time', style: headerStyle)),
-                  DataColumn(label: Text('Meal Time', style: headerStyle)),
-                  DataColumn(label: Text('Value', style: headerStyle)),
-                  DataColumn(label: Text('Status', style: headerStyle)),
-                ],
-                rows: sugarRecords.map((r) => DataRow(cells: [
-                  DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                  DataCell(Text(r.time.format(context))),
-                  DataCell(Text(r.mealTimeCategory.name)),
-                  DataCell(Text(r.value.toString())),
-                  DataCell(Text(r.status.name)),
-                ])).toList(),
-              ),
-            ),
-          ),
-        const SizedBox(height: 24),
-        if (bpRecords.isNotEmpty)
-          _buildSection(
-            'Blood Pressure Records',
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text('Date', style: headerStyle)),
-                  DataColumn(label: Text('Time', style: headerStyle)),
-                  DataColumn(label: Text('Systolic', style: headerStyle)),
-                  DataColumn(label: Text('Diastolic', style: headerStyle)),
-                  DataColumn(label: Text('Pulse', style: headerStyle)),
-                  DataColumn(label: Text('Status', style: headerStyle)),
-                ],
-                rows: bpRecords.map((r) => DataRow(cells: [
-                  DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                  DataCell(Text(r.time.format(context))),
-                  DataCell(Text(r.systolic.toString())),
-                  DataCell(Text(r.diastolic.toString())),
-                  DataCell(Text(r.pulseRate.toString())),
-                  DataCell(Text(r.status.name)),
-                ])).toList(),
-              ),
-            ),
-          ),
-      ],
     );
   }
 
