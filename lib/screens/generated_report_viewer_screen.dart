@@ -448,7 +448,7 @@ class FloatingPageNavigator extends StatelessWidget {
       elevation: 8.0,
       child: Container(
         height: 80,
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: Theme.of(context).scaffoldBackgroundColor.withAlpha(90),
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
