@@ -618,12 +618,12 @@ class _BPDataScreenState extends State<BPDataScreen> {
   
 
   Widget _recordsTable(ThemeData theme, Map<DateTime, List<BPRecord>> groupedByDate, List<DateTime> sortedDates) {
-    final paginatedDates = sortedDates
+    final paginatedRecords = _currentlyDisplayedRecords
         .skip(_currentPage * _rowsPerPage)
         .take(_rowsPerPage)
         .toList();
 
-    if (paginatedDates.isEmpty) {
+    if (paginatedRecords.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(16.0),
         child: Center(child: Text('No records found for the selected criteria.')),
@@ -643,33 +643,30 @@ class _BPDataScreenState extends State<BPDataScreen> {
           DataColumn(label: Text('Trend')),
           DataColumn(label: Text('Actions')),
         ],
-        rows: paginatedDates.expand((date) {
-          final records = groupedByDate[date]!;
-          return List.generate(records.length, (i) {
-            final record = records[i];
-            final prev = i > 0 ? records[i - 1] : null;
-            return DataRow(cells: [
-              DataCell(Text(DateFormat('dd-MMM-yy').format(record.date))),
-              DataCell(Text(record.time.format(context))),
-              DataCell(Text(record.systolic.toString())),
-              DataCell(Text(record.diastolic.toString())),
-              DataCell(Text(record.pulseRate.toString())),
-              DataCell(_buildStatusIcon(record.status)),
-              DataCell(_buildTrendIcon(record, prev)),
-              DataCell(Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => _showFormDialog(editing: record),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () => _showDeleteConfirmation(record.id!),
-                  ),
-                ],
-              )),
-            ]);
-          });
+        rows: paginatedRecords.map((record) {
+          final prevRecordIndex = _currentlyDisplayedRecords.indexOf(record) + 1;
+          final prev = prevRecordIndex < _currentlyDisplayedRecords.length ? _currentlyDisplayedRecords[prevRecordIndex] : null;
+          return DataRow(cells: [
+            DataCell(Text(DateFormat('dd-MMM-yy').format(record.date))),
+            DataCell(Text(record.time.format(context))),
+            DataCell(Text(record.systolic.toString())),
+            DataCell(Text(record.diastolic.toString())),
+            DataCell(Text(record.pulseRate.toString())),
+            DataCell(_buildStatusIcon(record.status)),
+            DataCell(_buildTrendIcon(record, prev)),
+            DataCell(Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _showFormDialog(editing: record),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _showDeleteConfirmation(record.id!),
+                ),
+              ],
+            )),
+          ]);
         }).toList(),
       ),
     );
@@ -733,7 +730,7 @@ class _BPDataScreenState extends State<BPDataScreen> {
   }
 
   Widget _pagination(int totalRows) {
-    final totalPages = (totalRows / _rowsPerPage).ceil();
+    final totalPages = (_currentlyDisplayedRecords.length / _rowsPerPage).ceil();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
