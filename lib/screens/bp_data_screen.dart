@@ -7,6 +7,7 @@ import 'package:jagadiri/services/database_service.dart';
 import 'package:collection/collection.dart';
 import 'package:jagadiri/providers/user_profile_provider.dart';
 
+/* -------------------- Main Screen -------------------- */
 class BPDataScreen extends StatefulWidget {
   const BPDataScreen({super.key});
 
@@ -16,6 +17,7 @@ class BPDataScreen extends StatefulWidget {
 
 enum DisplayMode { all, top20 }
 
+/* -------------------- State -------------------- */
 class _BPDataScreenState extends State<BPDataScreen> {
   /* -------------------- State -------------------- */
   List<BPRecord> _bpRecords = [];
