@@ -44,6 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-
 #large file
 assets/models/distilgpt2.tflite

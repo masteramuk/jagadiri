@@ -202,8 +202,10 @@ class _GeneratedReportViewerScreenState
               _buildPageFour(),
             ],
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
+          Positioned(
+            bottom: 16.0,
+            left: 16.0,
+            right: 16.0,
             child: FloatingPageNavigator(
               currentPageIndex: _currentPageIndex,
               pageController: _pageController,
@@ -216,7 +218,7 @@ class _GeneratedReportViewerScreenState
 
   Widget _buildPageOne() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -232,7 +234,7 @@ class _GeneratedReportViewerScreenState
 
   Widget _buildPageTwo() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -276,7 +278,7 @@ class _GeneratedReportViewerScreenState
   Widget _buildPageThree() {
     final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
       child: _buildSection(
         'Blood Sugar Records',
         SingleChildScrollView(
@@ -307,7 +309,7 @@ class _GeneratedReportViewerScreenState
   Widget _buildPageFour() {
     final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
       child: _buildSection(
         'Blood Pressure & Pulse Records',
         SingleChildScrollView(
@@ -444,11 +446,18 @@ class FloatingPageNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use a Color.white or Theme.of(context).scaffoldBackgroundColor
+    // and apply 90% opacity (Alpha: 230 out of 255).
+    final semiOpaqueColor = Theme. of(context).scaffoldBackgroundColor.withAlpha(210); // 90% opacity
+
     return Material(
-      elevation: 8.0,
+      color: Colors. transparent, // 1. Make Material transparent
+      elevation: 1.0,
       child: Container(
         height: 80,
-        color: Theme.of(context).scaffoldBackgroundColor.withAlpha(90),
+        color: semiOpaqueColor,
+        //color: Colors. transparent,
+        //color: Theme.of(context).scaffoldBackgroundColor.withAlpha(10),
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -481,13 +490,13 @@ class FloatingPageNavigator extends StatelessWidget {
             Material(
               color: isSelected
                   ? Theme.of(context).primaryColor
-                  : Colors.transparent,
-              elevation: isSelected ? 4.0 : 0.0,
+                  : Colors. transparent,
+              elevation: isSelected? 4.0: 0.0,
               shape: const CircleBorder(),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Icon(icon,
-                    color: isSelected ? Colors.white : Colors.grey.shade600,
+                    color: isSelected? Colors.white: Colors. grey.shade600,
                     size: 24),
               ),
             ),
@@ -497,9 +506,9 @@ class FloatingPageNavigator extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? Theme.of(context).primaryColor
-                    : Colors.grey.shade600,
+                    : Colors. grey.shade600,
                 fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected? FontWeight.bold: FontWeight.normal,
               ),
               overflow: TextOverflow.ellipsis,
             ),
