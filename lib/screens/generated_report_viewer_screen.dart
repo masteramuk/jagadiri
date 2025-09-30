@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:jagadiri/models/user_profile.dart';
@@ -453,20 +454,28 @@ class FloatingPageNavigator extends StatelessWidget {
     return Material(
       color: Colors. transparent, // 1. Make Material transparent
       elevation: 1.0,
-      child: Container(
-        height: 80,
-        color: semiOpaqueColor,
-        //color: Colors. transparent,
-        //color: Theme.of(context).scaffoldBackgroundColor.withAlpha(10),
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(context, 0, Icons.description, 'Summary'),
-            _buildNavItem(context, 1, Icons.bar_chart, 'Charts'),
-            _buildNavItem(context, 2, Icons.bloodtype, 'Sugar'),
-            _buildNavItem(context, 3, Icons.favorite, 'BP & Pulse'),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20.0), // Rounded corners for the glassy effect
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Apply blur effect
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.7), // Adjusted opacity for glassy look
+              borderRadius: BorderRadius.circular(20.0),
+              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.0), // Subtle white border
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavItem(context, 0, Icons.description, 'Summary'),
+                _buildNavItem(context, 1, Icons.bar_chart, 'Charts'),
+                _buildNavItem(context, 2, Icons.bloodtype, 'Sugar'),
+                _buildNavItem(context, 3, Icons.favorite, 'BP & Pulse'),
+              ],
+            ),
+          ),
         ),
       ),
     );
