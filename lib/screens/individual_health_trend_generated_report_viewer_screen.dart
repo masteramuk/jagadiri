@@ -14,14 +14,14 @@ import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 
-class GeneratedReportViewerScreen extends StatefulWidget {
+class IndividualHealthTrendGeneratedReportViewerScreen extends StatefulWidget {
   final UserProfile userProfile;
   final List<SugarRecord> sugarRecords;
   final List<BPRecord> bpRecords;
   final DateTime startDate;
   final DateTime endDate;
 
-  const GeneratedReportViewerScreen({
+  const IndividualHealthTrendGeneratedReportViewerScreen({
     super.key,
     required this.userProfile,
     required this.sugarRecords,
@@ -31,12 +31,12 @@ class GeneratedReportViewerScreen extends StatefulWidget {
   });
 
   @override
-  State<GeneratedReportViewerScreen> createState() =>
-      _GeneratedReportViewerScreenState();
+  State<IndividualHealthTrendGeneratedReportViewerScreen> createState() =>
+      _IndividualHealthTrendGeneratedReportViewerScreenState();
 }
 
-class _GeneratedReportViewerScreenState
-    extends State<GeneratedReportViewerScreen> {
+class _IndividualHealthTrendGeneratedReportViewerScreenState
+    extends State<IndividualHealthTrendGeneratedReportViewerScreen> {
   late final String _analysisText;
   late final PageController _pageController;
   int _currentPageIndex = 0;

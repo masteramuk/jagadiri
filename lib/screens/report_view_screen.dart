@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 import '../services/database_service.dart';
-import 'generated_report_viewer_screen.dart';
+import 'individual_health_trend_generated_report_viewer_screen.dart';
 
 class ReportViewScreen extends StatefulWidget {
   final String reportId;
@@ -73,7 +73,7 @@ class _ReportViewScreenState extends State<ReportViewScreen> {
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => GeneratedReportViewerScreen(
+          builder: (context) => IndividualHealthTrendGeneratedReportViewerScreen(
             userProfile: userProfile,
             sugarRecords: sugarRecords,
             bpRecords: bpRecords,
