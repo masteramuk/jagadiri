@@ -113,8 +113,12 @@ class IndividualHealthTrendGeneratedReportViewerScreen extends StatefulWidget {
 class _IndividualHealthTrendGeneratedReportViewerScreenState
     extends State<IndividualHealthTrendGeneratedReportViewerScreen> {
   late final String _analysisText;
-  late final PageController _pageController;
-  int _currentPageIndex = 0;
+
+  final _scrollController = ScrollController();
+  final _summaryKey = GlobalKey();
+  final _chartsKey = GlobalKey();
+  final _sugarRecordsKey = GlobalKey();
+  final _bpRecordsKey = GlobalKey();
 
   final _glucoseChartKey = GlobalKey();
   final _bpChartKey = GlobalKey();
@@ -133,14 +137,6 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
       bpReadings: widget.bpRecords,
       userProfile: widget.userProfile,
     );
-    _pageController = PageController();
-    _pageController.addListener(() {
-      if (_pageController.page?.round() != _currentPageIndex) {
-        setState(() {
-          _currentPageIndex = _pageController.page!.round();
-        });
-      }
-    });
 
     // Pre-build charts
     if (widget.sugarRecords.isNotEmpty) {
@@ -154,7 +150,7 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
       _bpChart = RepaintBoundary(
         key: _bpChartKey,
         child:
-            IndividualHealthTrendChartGenerator.buildBPChart(widget.bpRecords),
+        IndividualHealthTrendChartGenerator.buildBPChart(widget.bpRecords),
       );
       _pulseChart = RepaintBoundary(
         key: _pulseChartKey,
@@ -166,11 +162,11 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-Future<void> _savePdf() async {
+  Future<void> _savePdf() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Generating PDF...')),
     );
@@ -240,44 +236,168 @@ Future<void> _savePdf() async {
               tooltip: 'Save as Excel'),
         ],
       ),
-      body: Stack(
-        children: [
-          PageView(
-            controller: _pageController,
-            children: [
-              _buildPageOne(),
-              _buildPageTwo(),
-              _buildPageThree(),
-              _buildPageFour(),
-            ],
-          ),
-          Positioned(
-            bottom: 16.0,
-            left: 16.0,
-            right: 16.0,
-            child: FloatingPageNavigator(
-              currentPageIndex: _currentPageIndex,
-              pageController: _pageController,
-            ),
-          )
-        ],
+      body: _buildReportContent(),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return PopupMenuButton<int>(
+      onSelected: _scrollToSection,
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 0, child: Text('Summary')),
+        const PopupMenuItem(value: 1, child: Text('Charts')),
+        const PopupMenuItem(value: 2, child: Text('Sugar Records')),
+        const PopupMenuItem(value: 3, child: Text('BP Records')),
+      ],
+      child: const FloatingActionButton(
+        onPressed: null, // onPressed is handled by PopupMenuButton
+        child: Icon(Icons.menu),
       ),
     );
   }
 
-  Widget _buildPageOne() {
+  void _scrollToSection(int index) {
+    GlobalKey? key;
+    switch (index) {
+      case 0:
+        key = _summaryKey;
+        break;
+      case 1:
+        key = _chartsKey;
+        break;
+      case 2:
+        key = _sugarRecordsKey;
+        break;
+      case 3:
+        key = _bpRecordsKey;
+        break;
+    }
+
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  Widget _buildReportContent() {
+    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildReportHeader(),
-          const SizedBox(height: 16),
-          _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
-          const SizedBox(height: 16),
-          _buildSummary(widget.bpRecords, widget.sugarRecords),
-          const SizedBox(height: 16),
-          _buildAnalysis(_analysisText),
+          KeyedSubtree(
+            key: _summaryKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildReportHeader(),
+                const SizedBox(height: 16),
+                _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
+                const SizedBox(height: 16),
+                _buildSummary(widget.bpRecords, widget.sugarRecords),
+                const SizedBox(height: 16),
+                _buildAnalysis(_analysisText),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          KeyedSubtree(
+            key: _chartsKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Trend Analysis',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                if (_glucoseChart != null)
+                  _buildSection(
+                    'Glucose Trend',
+                    SizedBox(height: 200, child: _glucoseChart),
+                  ),
+                const SizedBox(height: 24),
+                if (_bpChart != null) ...[
+                  _buildSection(
+                    'Blood Pressure Trend',
+                    SizedBox(height: 200, child: _bpChart),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                if (_pulseChart != null) ...[
+                  _buildSection(
+                    'Pulse Trend',
+                    SizedBox(height: 200, child: _pulseChart),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          KeyedSubtree(
+            key: _sugarRecordsKey,
+            child: _buildSection(
+              'Blood Sugar Records',
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: [
+                    DataColumn(label: Text('Date', style: headerStyle)),
+                    DataColumn(label: Text('Time', style: headerStyle)),
+                    DataColumn(label: Text('Meal Time', style: headerStyle)),
+                    DataColumn(label: Text('Value', style: headerStyle)),
+                    DataColumn(label: Text('Status', style: headerStyle)),
+                  ],
+                  rows: widget.sugarRecords
+                      .map((r) => DataRow(cells: [
+                    DataCell(Text(DateFormat('MM-dd').format(r.date))),
+                    DataCell(Text(r.time.format(context))),
+                    DataCell(Text(r.mealTimeCategory.name)),
+                    DataCell(Text(r.value.toStringAsFixed(1))),
+                    DataCell(Text(r.status.name)),
+                  ]))
+                      .toList(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          KeyedSubtree(
+            key: _bpRecordsKey,
+            child: _buildSection(
+              'Blood Pressure & Pulse Records',
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: [
+                    DataColumn(label: Text('Date', style: headerStyle)),
+                    DataColumn(label: Text('Time', style: headerStyle)),
+                    DataColumn(label: Text('Systolic', style: headerStyle)),
+                    DataColumn(label: Text('Diastolic', style: headerStyle)),
+                    DataColumn(label: Text('Pulse', style: headerStyle)),
+                    DataColumn(label: Text('Status', style: headerStyle)),
+                  ],
+                  rows: widget.bpRecords
+                      .map((r) => DataRow(cells: [
+                    DataCell(Text(DateFormat('MM-dd').format(r.date))),
+                    DataCell(Text(r.time.format(context))),
+                    DataCell(Text(r.systolic.toString())),
+                    DataCell(Text(r.diastolic.toString())),
+                    DataCell(Text(r.pulseRate.toString())),
+                    DataCell(Text(r.status.name)),
+                  ]))
+                      .toList(),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -303,106 +423,6 @@ Future<void> _savePdf() async {
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-
-  Widget _buildPageTwo() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Trend Analysis',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 24),
-          if (_glucoseChart != null)
-            _buildSection(
-              'Glucose Trend',
-              SizedBox(height: 200, child: _glucoseChart),
-            ),
-          const SizedBox(height: 24),
-          if (_bpChart != null) ...[
-            _buildSection(
-              'Blood Pressure Trend',
-              SizedBox(height: 200, child: _bpChart),
-            ),
-            const SizedBox(height: 24),
-          ],
-          if (_pulseChart != null) ...[
-            _buildSection(
-              'Pulse Trend',
-              SizedBox(height: 200, child: _pulseChart),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPageThree() {
-    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
-      child: _buildSection(
-        'Blood Sugar Records',
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: [
-              DataColumn(label: Text('Date', style: headerStyle)),
-              DataColumn(label: Text('Time', style: headerStyle)),
-              DataColumn(label: Text('Meal Time', style: headerStyle)),
-              DataColumn(label: Text('Value', style: headerStyle)),
-              DataColumn(label: Text('Status', style: headerStyle)),
-            ],
-            rows: widget.sugarRecords
-                .map((r) => DataRow(cells: [
-                      DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                      DataCell(Text(r.time.format(context))),
-                      DataCell(Text(r.mealTimeCategory.name)),
-                      DataCell(Text(r.value.toStringAsFixed(1))),
-                      DataCell(Text(r.status.name)),
-                    ]))
-                .toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPageFour() {
-    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
-      child: _buildSection(
-        'Blood Pressure & Pulse Records',
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: [
-              DataColumn(label: Text('Date', style: headerStyle)),
-              DataColumn(label: Text('Time', style: headerStyle)),
-              DataColumn(label: Text('Systolic', style: headerStyle)),
-              DataColumn(label: Text('Diastolic', style: headerStyle)),
-              DataColumn(label: Text('Pulse', style: headerStyle)),
-              DataColumn(label: Text('Status', style: headerStyle)),
-            ],
-            rows: widget.bpRecords
-                .map((r) => DataRow(cells: [
-                      DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                      DataCell(Text(r.time.format(context))),
-                      DataCell(Text(r.systolic.toString())),
-                      DataCell(Text(r.diastolic.toString())),
-                      DataCell(Text(r.pulseRate.toString())),
-                      DataCell(Text(r.status.name)),
-                    ]))
-                .toList(),
-          ),
-        ),
-      ),
     );
   }
 
@@ -525,98 +545,5 @@ Future<void> _savePdf() async {
   double _avg(List<dynamic> records, num Function(dynamic) selector) {
     if (records.isEmpty) return 0.0;
     return records.map(selector).reduce((a, b) => a + b) / records.length;
-  }
-}
-
-class FloatingPageNavigator extends StatelessWidget {
-  final int currentPageIndex;
-  final PageController pageController;
-
-  const FloatingPageNavigator({
-    super.key,
-    required this.currentPageIndex,
-    required this.pageController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Use a Color.white or Theme.of(context).scaffoldBackgroundColor
-    // and apply 90% opacity (Alpha: 230 out of 255).
-    final semiOpaqueColor = Theme. of(context).scaffoldBackgroundColor.withAlpha(210); // 90% opacity
-
-    return Material(
-      color: Colors. transparent, // 1. Make Material transparent
-      elevation: 1.0,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20.0), // Rounded corners for the glassy effect
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Apply blur effect
-          child: Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.7), // Adjusted opacity for glassy look
-              borderRadius: BorderRadius.circular(20.0),
-              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.0), // Subtle white border
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavItem(context, 0, Icons.description, 'Summary'),
-                _buildNavItem(context, 1, Icons.bar_chart, 'Charts'),
-                _buildNavItem(context, 2, Icons.bloodtype, 'Sugar'),
-                _buildNavItem(context, 3, Icons.favorite, 'BP & Pulse'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-      BuildContext context, int index, IconData icon, String label) {
-    final isSelected = currentPageIndex == index;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () => pageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        ),
-        borderRadius: BorderRadius.circular(30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Material(
-              color: isSelected
-                  ? Theme.of(context).primaryColor
-                  : Colors. transparent,
-              elevation: isSelected? 4.0: 0.0,
-              shape: const CircleBorder(),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(icon,
-                    color: isSelected? Colors.white: Colors. grey.shade600,
-                    size: 24),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors. grey.shade600,
-                fontSize: 11,
-                fontWeight: isSelected? FontWeight.bold: FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
