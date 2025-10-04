@@ -13,6 +13,18 @@ import 'individual_health_trend_chart_generator.dart';
 class IndividualHealthTrendService {
   final HealthAnalysisService _analysisService = HealthAnalysisService();
 
+  // --- PDF Styling Constants ---
+  // Define colors to match the desired UI look
+  final _pdf.PdfColor _healthReportBg = const _pdf.PdfColor.fromInt(0xFFBBDEFB); // Light Blue 200
+  final _pdf.PdfColor _summaryBg = const _pdf.PdfColor.fromInt(0xFFF0F0F0); // Very Light Grey (Card background)
+  final _pdf.PdfColor _analysisBg = const _pdf.PdfColor.fromInt(0xFFE8F5E9); // Light Green 50
+  final _pdf.PdfColor _analysisTitleColor = const _pdf.PdfColor.fromInt(0xFF388E3C); // Dark Green
+
+  // Common styles for the 'Card' look
+  static const double _padding = 16.0;
+  static const double _borderRadius = 8.0;
+  static const double _lineSpacing = 1.5;
+
   /// Generates PDF for Individual Health Trends report.
   Future<pw.Document> generatePdf({
     required List<SugarRecord> sugarReadings,
@@ -24,36 +36,15 @@ class IndividualHealthTrendService {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    // ✅ Create document
     final pdf = pw.Document();
 
-    // ✅ Preload chart widgets
-    final glucoseChartWidget = pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('Glucose Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 10),
-        pw.Image(pw.MemoryImage(glucoseChartBytes)),
-      ],
-    );
-
-    final bpChartWidget = pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('Blood Pressure Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 10),
-        pw.Image(pw.MemoryImage(bpChartBytes)),
-      ],
-    );
-
-    final pulseChartWidget = pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('Pulse Trend', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 10),
-        pw.Image(pw.MemoryImage(pulseChartBytes)),
-      ],
-    );
+    // Preload chart widgets
+    final glucoseChartWidget = buildChartImage(
+        'Glucose Trend', glucoseChartBytes);
+    final bpChartWidget = buildChartImage(
+        'Blood Pressure Trend', bpChartBytes);
+    final pulseChartWidget = buildChartImage(
+        'Pulse Trend', pulseChartBytes);
 
     final analysisText = _analysisService.generateAnalysisText(
       sugarReadings: sugarReadings,
@@ -66,22 +57,38 @@ class IndividualHealthTrendService {
         pageFormat: _pdf.PdfPageFormat.a4,
         build: (pw.Context context) {
           return [
-            _buildHeader(userProfile, startDate, endDate),
-            pw.SizedBox(height: 20),
-            _buildSectionSeparator(),
-            _buildSummarySection(userProfile, bpReadings, sugarReadings),
-            pw.SizedBox(height: 20),
-            _buildSectionSeparator(),
-            _buildAnalysisSection(analysisText),
-            pw.SizedBox(height: 20),
-            _buildSectionSeparator(),
-            glucoseChartWidget,
-            pw.SizedBox(height: 10),
-            bpChartWidget,
-            pw.SizedBox(height: 10),
-            pulseChartWidget,
-            pw.SizedBox(height: 20),
-            _buildDetailedDataSection(bpReadings, sugarReadings),
+            // --- PAGE 1: HEADER & SUMMARY SECTIONS (should always fit on page 1) ---
+            buildReportTitle(),
+            pw.SizedBox(height: 16),
+            buildHeader(userProfile, startDate, endDate),
+            buildSummarySection(userProfile, bpReadings, sugarReadings),
+
+            // --- ANALYSIS SECTION: Wrapped to prevent orphaned section title/huge gaps ---
+            buildAnalysisSection(analysisText),
+
+            pw.SizedBox(height: 30),
+
+            // --- TREND ANALYSIS SECTION: Grouped to prevent orphaned title ---
+            pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 10),
+                  if (sugarReadings.isNotEmpty) glucoseChartWidget,
+                  if (sugarReadings.isNotEmpty) pw.SizedBox(height: 10),
+                ]
+            ),
+
+            // Other charts follow
+            if (bpReadings.isNotEmpty) bpChartWidget,
+            if (bpReadings.isNotEmpty) pw.SizedBox(height: 10),
+
+            if (bpReadings.isNotEmpty) pulseChartWidget,
+            if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
+
+
+            // --- DETAILED DATA SECTION: Wrapped inside its own function to keep titles with tables ---
+            buildDetailedDataSection(bpReadings, sugarReadings),
           ];
         },
       ),
@@ -90,8 +97,82 @@ class IndividualHealthTrendService {
     return pdf;
   }
 
-  // ✅ IMPROVED: Cleaner, more professional header
-  pw.Widget _buildHeader(UserProfile? userProfile, DateTime? startDate, DateTime? endDate) {
+  // --- WIDGET BUILDING METHODS ---
+
+  Future<Uint8List> generatePrintablePdf({
+    required List<SugarRecord> sugarReadings,
+    required List<BPRecord> bpReadings,
+    required UserProfile userProfile,
+    required Uint8List glucoseChartBytes,
+    required Uint8List bpChartBytes,
+    required Uint8List pulseChartBytes,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final pdf = pw.Document();
+
+    final analysisText = _analysisService.generateAnalysisText(
+      sugarReadings: sugarReadings,
+      bpReadings: bpReadings,
+      userProfile: userProfile,
+    );
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: _pdf.PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            buildReportTitle(),
+            pw.SizedBox(height: 16),
+            buildHeader(userProfile, startDate, endDate),
+            buildSummarySection(userProfile, bpReadings, sugarReadings),
+            buildAnalysisSection(analysisText),
+            pw.SizedBox(height: 30),
+            pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 10),
+                  if (sugarReadings.isNotEmpty) buildChartImage('Glucose Trend', glucoseChartBytes),
+                  if (sugarReadings.isNotEmpty) pw.SizedBox(height: 10),
+                ]
+            ),
+            if (bpReadings.isNotEmpty) buildChartImage('Blood Pressure Trend', bpChartBytes),
+            if (bpReadings.isNotEmpty) pw.SizedBox(height: 10),
+            if (bpReadings.isNotEmpty) buildChartImage('Pulse Trend', pulseChartBytes),
+            if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
+            buildDetailedDataSection(bpReadings, sugarReadings),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  pw.Widget buildReportTitle() {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.Text('🩺', style: pw.TextStyle(fontSize: 40)),
+        pw.SizedBox(height: 8),
+        pw.Text(
+          'Individual Health Trend Analysis Report',
+          style: pw.TextStyle(
+              fontSize: 22, fontWeight: pw.FontWeight.bold),
+          textAlign: pw.TextAlign.center,
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          'Report Generated on ${DateFormat.yMMMd().format(DateTime.now())}',
+          style: const pw.TextStyle(fontSize: 12),
+          textAlign: pw.TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  pw.Widget buildHeader(UserProfile? userProfile, DateTime? startDate, DateTime? endDate) {
     String dateRangeText = '';
     if (startDate != null && endDate != null) {
       dateRangeText = 'Date Range: ${_formatDate(startDate)} - ${_formatDate(endDate)}';
@@ -102,25 +183,28 @@ class IndividualHealthTrendService {
     }
 
     return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
+      margin: const pw.EdgeInsets.only(bottom: 20),
+      padding: const pw.EdgeInsets.all(_padding),
       width: double.infinity,
       decoration: pw.BoxDecoration(
-        color: _pdf.PdfColors.blue100,
-        borderRadius: pw.BorderRadius.circular(4),
+        color: _healthReportBg,
+        borderRadius: pw.BorderRadius.circular(_borderRadius),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('Health Report'),
+          pw.Text('Health Report', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Divider(height: 10, thickness: 1),
           if (userProfile != null) ...[
             pw.Text('Name: ${userProfile.name}'),
             pw.Text('Date of Birth: ${userProfile.dob != null ? _formatDate(userProfile.dob!) : 'N/A'}'),
             pw.Text('Gender: ${userProfile.gender ?? 'N/A'}'),
             pw.Text('Height: ${userProfile.height.toStringAsFixed(1)} ${userProfile.measurementUnit == 'Metric' ? 'cm' : 'in'}'),
             pw.Text('Weight: ${userProfile.weight.toStringAsFixed(1)} ${userProfile.measurementUnit == 'Metric' ? 'kg' : 'lbs'}'),
-            pw.Text('BMI: ${_calculateBMI(userProfile).toStringAsFixed(2)}'),
+            pw.Text('BMI: ${_calculateBMI(userProfile).toStringAsFixed(1)}'),
             pw.Text('Diabetic Status: ${userProfile.sugarScenario ?? 'N/A'}'),
           ],
+          pw.Divider(height: 10, thickness: 1),
           pw.Text('Report Date: ${_formatDateTime(DateTime.now())}'),
           if (dateRangeText.isNotEmpty) pw.Text(dateRangeText),
         ],
@@ -128,23 +212,23 @@ class IndividualHealthTrendService {
     );
   }
 
-  // ✅ IMPROVED: Cleaner, more compact summary
-  pw.Widget _buildSummarySection(UserProfile userProfile, List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
+  pw.Widget buildSummarySection(UserProfile userProfile, List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
+      margin: const pw.EdgeInsets.only(bottom: 20),
+      padding: const pw.EdgeInsets.all(_padding),
       width: double.infinity,
       decoration: pw.BoxDecoration(
-        color: _pdf.PdfColors.grey100,
-        borderRadius: pw.BorderRadius.circular(4),
+        color: _summaryBg,
+        borderRadius: pw.BorderRadius.circular(_borderRadius),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('SUMMARY'),
-          pw.SizedBox(height: 10),
+          pw.Text('SUMMARY', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Divider(height: 10, thickness: 1),
           if (sugarRecords.isNotEmpty) ...[
             pw.Text(
-              'Avg Glucose: ${_avg(sugarRecords, (r) => r.value as num).toStringAsFixed(1)} mg/dL'),
+                'Avg Glucose: ${_avg(sugarRecords, (r) => r.value as num).toStringAsFixed(1)} mg/dL'),
             pw.Text('Min: ${_min(sugarRecords, (r) => r.value as num).toStringAsFixed(1)} | Max: ${_max(sugarRecords, (r) => r.value as num).toStringAsFixed(1)}'),
           ],
           if (bpRecords.isNotEmpty) ...[
@@ -156,143 +240,132 @@ class IndividualHealthTrendService {
     );
   }
 
-  pw.Widget _buildAnalysisSection(String analysisText) {
+  pw.Widget buildAnalysisSection(String analysisText) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
+      margin: const pw.EdgeInsets.only(bottom: 20),
+      padding: const pw.EdgeInsets.all(_padding),
       width: double.infinity,
       decoration: pw.BoxDecoration(
-        color: _pdf.PdfColors.green100,
-        borderRadius: pw.BorderRadius.circular(4),
+        color: _analysisBg,
+        borderRadius: pw.BorderRadius.circular(_borderRadius),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('ENHANCED ANALYSIS'),
-          pw.SizedBox(height: 10),
-          pw.Paragraph(text: analysisText),
+          pw.Text('HEALTH ANALYSIS', style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            color: _analysisTitleColor,
+          )),
+          pw.Divider(height: 10, thickness: 1),
+          pw.Paragraph(
+            text: analysisText,
+            style: const pw.TextStyle(lineSpacing: _lineSpacing),
+          ),
         ],
       ),
     );
   }
 
-  // ✅ FIXED: Accepts pw.Widget directly — no more ChartDrawer
-  pw.Widget _buildChartSection(String title, pw.Widget chartWidget) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
-      width: double.infinity,
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: _pdf.PdfColors.grey300),
-        borderRadius: pw.BorderRadius.circular(4),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 10),
-          chartWidget, // ✅ Just add the widget — no CanvasBuilder needed
-        ],
-      ),
+  pw.Widget buildChartImage(String title, Uint8List chartBytes) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 8),
+        pw.Image(pw.MemoryImage(chartBytes), fit: pw.BoxFit.contain),
+      ],
     );
   }
 
-  pw.Widget _buildDetailedDataSection(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
+  pw.Widget buildDetailedDataSection(List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
+    // Custom Table Border Style (Clean look: no vertical lines, thin horizontal lines)
+    final pw.TableBorder tableBorder = pw.TableBorder(
+      verticalInside: pw.BorderSide.none,
+      horizontalInside: pw.BorderSide(width: 0.5, color: _pdf.PdfColors.grey400),
+      top: pw.BorderSide(width: 0.5, color: _pdf.PdfColors.grey400),
+      bottom: pw.BorderSide(width: 0.5, color: _pdf.PdfColors.grey400),
+      left: pw.BorderSide.none,
+      right: pw.BorderSide.none,
+    );
+
+    // Table Styling
+    final pw.TextStyle headerStyle = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10);
+    const pw.TextStyle cellStyle = pw.TextStyle(fontSize: 10);
+    const pw.EdgeInsets cellPadding = pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4);
+
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text('DETAILED DATA', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-        _buildSectionSeparator(),
         pw.SizedBox(height: 10),
-        if (bpRecords.isNotEmpty) ...[
-          pw.Text('Blood Pressure Records:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Table(
-            border: pw.TableBorder.all(color: _pdf.PdfColors.black),
-            children: [
-              // Table Headers
-              pw.TableRow(
-                children: [
-                  pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Time', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Time Name', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Systolic', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Diastolic', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Pulse', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Status', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                ].map((cell) => pw.Padding(padding: const pw.EdgeInsets.all(8), child: cell)).toList(),
-              ),
-              // Table Data
-              ...bpRecords.map((record) => pw.TableRow(
-                children: [
-                  pw.Text(DateFormat('dd-MMM-yyyy').format(record.date)),
-                  pw.Text(_formatTimeOfDay(record.time)),
-                  pw.Text(record.timeName.toString()),
-                  pw.Text(record.systolic.toString()),
-                  pw.Text(record.diastolic.toString()),
-                  pw.Text(record.pulseRate.toString()),
-                  pw.Text(record.status.toString()),
-                ].map((text) => pw.Padding(
-                  padding: const pw.EdgeInsets.all(8),
-                  child: pw.Text(text.toString()),
-                )).toList(),
-              )).toList(),
-            ],
+
+        // --- Blood Sugar Records (Wrapped in pw.Column to keep title/table together) ---
+        if (sugarRecords.isNotEmpty)
+          pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Blood Sugar Records', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                pw.SizedBox(height: 10),
+
+                pw.Table.fromTextArray(
+                  border: tableBorder,
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headerAlignment: pw.Alignment.centerLeft,
+                  cellPadding: cellPadding,
+                  cellStyle: cellStyle,
+                  headerStyle: headerStyle,
+                  headerDecoration: const pw.BoxDecoration(color: _pdf.PdfColors.grey100),
+                  headers: ['Date', 'Time', 'Meal Time', 'Value', 'Status'],
+                  data: sugarRecords.map((r) => [
+                    DateFormat('MM-dd').format(r.date),
+                    _formatTimeOfDay(r.time),
+                    r.mealTimeCategory.toString().split('.').last,
+                    r.value.toStringAsFixed(1),
+                    r.status.toString().split('.').last,
+                  ]).toList(),
+                ),
+                pw.SizedBox(height: 20),
+              ]
           ),
-          pw.SizedBox(height: 20),
-        ],
-        if (sugarRecords.isNotEmpty) ...[
-          pw.Text('Blood Sugar Records:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 10),
-          pw.Table(
-            border: pw.TableBorder.all(color: _pdf.PdfColors.black),
-            children: [
-              // Table Headers
-              pw.TableRow(
-                children: [
-                  pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Time', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Meal Time Category', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Meal Type', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Sugar Level', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Status', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                ].map((cell) => pw.Padding(padding: const pw.EdgeInsets.all(8), child: cell)).toList(),
-              ),
-              // Table Data
-              ...sugarRecords.map((record) => pw.TableRow(
-                children: [
-                  pw.Text(DateFormat('dd-MMM-yyyy').format(record.date)),
-                  pw.Text(_formatTimeOfDay(record.time)),
-                  pw.Text(record.mealTimeCategory.toString()),
-                  pw.Text(record.mealType.toString()),
-                  pw.Text(record.value.toString()),
-                  pw.Text(record.status.toString()),
-                ].map((text) => pw.Padding(
-                  padding: const pw.EdgeInsets.all(8),
-                  child: pw.Text(text.toString()),
-                )).toList(),
-              )).toList(),
-            ],
+
+        // --- Blood Pressure Records (Wrapped in pw.Column to keep title/table together) ---
+        if (bpRecords.isNotEmpty)
+          pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Blood Pressure Records', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                pw.SizedBox(height: 10),
+
+                pw.Table.fromTextArray(
+                  border: tableBorder,
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headerAlignment: pw.Alignment.centerLeft,
+                  cellPadding: cellPadding,
+                  cellStyle: cellStyle,
+                  headerStyle: headerStyle,
+                  headerDecoration: const pw.BoxDecoration(color: _pdf.PdfColors.grey100),
+                  headers: ['Date', 'Time', 'Time Name', 'Systolic', 'Diastolic', 'Pulse', 'Status'],
+                  data: bpRecords.map((r) => [
+                    DateFormat('MM-dd').format(r.date),
+                    _formatTimeOfDay(r.time),
+                    r.timeName.toString().split('.').last,
+                    r.systolic.toString(),
+                    r.diastolic.toString(),
+                    r.pulseRate.toString(),
+                    r.status.toString().split('.').last,
+                  ]).toList(),
+                ),
+                pw.SizedBox(height: 20),
+              ]
           ),
-        ],
+
         if (bpRecords.isEmpty && sugarRecords.isEmpty)
           pw.Text('No detailed records available for the selected date range.'),
       ],
     );
   }
 
-  Future<pw.Widget> buildChartSection({
-    required String title,
-    required GlobalKey chartKey,
-  }) async {
-    final bytes = await IndividualHealthTrendChartGenerator.captureChartAsImage(chartKey);
-    final image = pw.MemoryImage(bytes);
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 10),
-        pw.Image(image),
-      ],
-    );
-  }
 
   // --- Helper Methods ---
   String _formatDate(DateTime date) => '${date.day}-${_shortMonth(date.month)}-${date.year}';
@@ -309,19 +382,10 @@ class IndividualHealthTrendService {
 
   T _min<T extends num>(List records, T Function(dynamic) selector) => records.map(selector).reduce(math.min);
   T _max<T extends num>(List records, T Function(dynamic) selector) => records.map(selector).reduce(math.max);
-  //double _avg<T extends num>(List records, T Function(dynamic) selector) => records.map(selector).reduce((a, b) => a + b) / records.length;
   double _avg(List<dynamic> records, num Function(dynamic) selector) {
     if (records.isEmpty) return 0.0;
     final sum = records.map(selector).reduce((a, b) => a + b);
     return (sum/records.length).toDouble();
-  }
-
-  pw.Widget _buildSectionSeparator() {
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(vertical: 10),
-      height: 1,
-      color: _pdf.PdfColors.grey300,
-    );
   }
 
   String _formatTimeOfDay(TimeOfDay time) {

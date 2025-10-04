@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -220,12 +219,45 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
     }
   }
 
+  Future<void> _printReport() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Preparing for printing...')),
+    );
+    try {
+      final service = IndividualHealthTrendService();
+      final glucoseChartBytes = await IndividualHealthTrendChartGenerator.captureChartAsImage(_glucoseChartKey);
+      final bpChartBytes = await IndividualHealthTrendChartGenerator.captureChartAsImage(_bpChartKey);
+      final pulseChartBytes = await IndividualHealthTrendChartGenerator.captureChartAsImage(_pulseChartKey);
+
+      final pdfBytes = await service.generatePrintablePdf(
+        sugarReadings: widget.sugarRecords,
+        bpReadings: widget.bpRecords,
+        userProfile: widget.userProfile,
+        startDate: widget.startDate,
+        endDate: widget.endDate,
+        glucoseChartBytes: glucoseChartBytes,
+        bpChartBytes: bpChartBytes,
+        pulseChartBytes: pulseChartBytes,
+      );
+
+      await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to prepare for printing: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Generated Report'),
         actions: [
+          IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: _printReport,
+              tooltip: 'Print Report'),
           IconButton(
               icon: const Icon(Icons.picture_as_pdf),
               onPressed: _savePdf,
