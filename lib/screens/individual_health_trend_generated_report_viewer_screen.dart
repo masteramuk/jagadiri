@@ -123,6 +123,8 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
   final _bpChartKey = GlobalKey();
   final _pulseChartKey = GlobalKey();
 
+  final _reportContentKey = GlobalKey(); //to be use for printing purpose
+
   Widget? _glucoseChart;
   Widget? _bpChart;
   Widget? _pulseChart;
@@ -320,117 +322,118 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          KeyedSubtree(
-            key: _summaryKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildReportHeader(),
-                const SizedBox(height: 16),
-                _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
-                const SizedBox(height: 16),
-                _buildSummary(widget.bpRecords, widget.sugarRecords),
-                const SizedBox(height: 16),
-                _buildAnalysis(_analysisText),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          KeyedSubtree(
-            key: _chartsKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Trend Analysis',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                if (_glucoseChart != null)
-                  _buildSection(
-                    'Glucose Trend',
-                    SizedBox(height: 200, child: _glucoseChart),
-                  ),
-                const SizedBox(height: 24),
-                if (_bpChart != null) ...[
-                  _buildSection(
-                    'Blood Pressure Trend',
-                    SizedBox(height: 200, child: _bpChart),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                if (_pulseChart != null) ...[
-                  _buildSection(
-                    'Pulse Trend',
-                    SizedBox(height: 200, child: _pulseChart),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          KeyedSubtree(
-            key: _sugarRecordsKey,
-            child: _buildSection(
-              'Blood Sugar Records',
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: [
-                    DataColumn(label: Text('Date', style: headerStyle)),
-                    DataColumn(label: Text('Time', style: headerStyle)),
-                    DataColumn(label: Text('Meal Time', style: headerStyle)),
-                    DataColumn(label: Text('Value', style: headerStyle)),
-                    DataColumn(label: Text('Status', style: headerStyle)),
+      // Wrap the content in RepaintBoundary
+      child: RepaintBoundary(
+        key: _reportContentKey, // <-- using the key for printing alignment
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildReportHeader(),
+            _coloredDivider(color: Colors.blue, thickness: 2.0),
+            _buildHeader(widget.userProfile, widget.startDate, widget.endDate),
+            _coloredDivider(color: Colors.green, thickness: 2.0),
+            _buildSummary(widget.bpRecords, widget.sugarRecords),
+            _coloredDivider(color: Colors.orange, thickness: 2.0),
+            _buildAnalysis(_analysisText),
+            _coloredDivider(color: Colors.purple, thickness: 2.0),
+            KeyedSubtree(
+              key: _chartsKey,
+              child: _buildSection(
+                'Trend Analysis',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_glucoseChart != null)
+                      Column(
+                        children: [
+                          Text('Glucose Trend', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          SizedBox(height: 200, child: _glucoseChart),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    if (_bpChart != null)
+                      Column(
+                        children: [
+                          Text('Blood Pressure Trend', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          SizedBox(height: 200, child: _bpChart),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    if (_pulseChart != null)
+                      Column(
+                        children: [
+                          Text('Pulse Trend', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          SizedBox(height: 200, child: _pulseChart),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                   ],
-                  rows: widget.sugarRecords
-                      .map((r) => DataRow(cells: [
-                    DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                    DataCell(Text(r.time.format(context))),
-                    DataCell(Text(r.mealTimeCategory.name)),
-                    DataCell(Text(r.value.toStringAsFixed(1))),
-                    DataCell(Text(r.status.name)),
-                  ]))
-                      .toList(),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          KeyedSubtree(
-            key: _bpRecordsKey,
-            child: _buildSection(
-              'Blood Pressure & Pulse Records',
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: [
-                    DataColumn(label: Text('Date', style: headerStyle)),
-                    DataColumn(label: Text('Time', style: headerStyle)),
-                    DataColumn(label: Text('Systolic', style: headerStyle)),
-                    DataColumn(label: Text('Diastolic', style: headerStyle)),
-                    DataColumn(label: Text('Pulse', style: headerStyle)),
-                    DataColumn(label: Text('Status', style: headerStyle)),
-                  ],
-                  rows: widget.bpRecords
-                      .map((r) => DataRow(cells: [
-                    DataCell(Text(DateFormat('MM-dd').format(r.date))),
-                    DataCell(Text(r.time.format(context))),
-                    DataCell(Text(r.systolic.toString())),
-                    DataCell(Text(r.diastolic.toString())),
-                    DataCell(Text(r.pulseRate.toString())),
-                    DataCell(Text(r.status.name)),
-                  ]))
-                      .toList(),
+            _coloredDivider(color: Colors.red, thickness: 2.0),
+            KeyedSubtree(
+              key: _sugarRecordsKey,
+              child: _buildSection(
+                'Blood Sugar Records',
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: [
+                      DataColumn(label: Text('Date', style: headerStyle)),
+                      DataColumn(label: Text('Time', style: headerStyle)),
+                      DataColumn(label: Text('Meal Time', style: headerStyle)),
+                      DataColumn(label: Text('Value', style: headerStyle)),
+                      DataColumn(label: Text('Status', style: headerStyle)),
+                    ],
+                    rows: widget.sugarRecords
+                        .map((r) => DataRow(cells: [
+                      DataCell(Text(DateFormat('MM-dd').format(r.date))),
+                      DataCell(Text(r.time.format(context))),
+                      DataCell(Text(r.mealTimeCategory.name)),
+                      DataCell(Text(r.value.toStringAsFixed(1))),
+                      DataCell(Text(r.status.name)),
+                    ]))
+                        .toList(),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            _coloredDivider(color: Colors.teal, thickness: 2.0),
+            KeyedSubtree(
+              key: _bpRecordsKey,
+              child: _buildSection(
+                'Blood Pressure & Pulse Records',
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: [
+                      DataColumn(label: Text('Date', style: headerStyle)),
+                      DataColumn(label: Text('Time', style: headerStyle)),
+                      DataColumn(label: Text('Systolic', style: headerStyle)),
+                      DataColumn(label: Text('Diastolic', style: headerStyle)),
+                      DataColumn(label: Text('Pulse', style: headerStyle)),
+                      DataColumn(label: Text('Status', style: headerStyle)),
+                    ],
+                    rows: widget.bpRecords
+                        .map((r) => DataRow(cells: [
+                      DataCell(Text(DateFormat('MM-dd').format(r.date))),
+                      DataCell(Text(r.time.format(context))),
+                      DataCell(Text(r.systolic.toString())),
+                      DataCell(Text(r.diastolic.toString())),
+                      DataCell(Text(r.pulseRate.toString())),
+                      DataCell(Text(r.status.name)),
+                    ]))
+                        .toList(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -463,8 +466,7 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
         child,
       ],
     );
@@ -472,110 +474,231 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
 
   Widget _buildHeader(
       UserProfile profile, DateTime startDate, DateTime endDate) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.secondary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Health Report',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Divider(height: 20),
-                  Text('Name: ${profile.name}'),
-                  Text(
-                      'Date of Birth: ${profile.dob != null ? DateFormat.yMMMd().format(profile.dob!) : 'N/A'}'),
-                  Text('Diabetic Status: ${profile.sugarScenario ?? 'N/A'}'),
-                  const Divider(height: 20),
-                  Text('Report Date: ${DateFormat.yMMMd().format(DateTime.now())}'),
-                  Text(
-                      'Date Range: ${DateFormat.yMMMd().format(startDate)} - ${DateFormat.yMMMd().format(endDate)}'),
-                ],
-              ),
+    final String weightUnit = profile.measurementUnit == 'Metric' ? 'kg' : 'lbs';
+    final String heightUnit = profile.measurementUnit == 'Metric' ? 'cm' : 'inches';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+          Icon(Icons.person_2_outlined, size: 40, color: Theme.of(context).colorScheme.secondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Personal Profile',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Divider(height: 20),
+                Text('Name: ${profile.name}'),
+                Text(
+                    'Date of Birth: ${profile.dob != null ? DateFormat.yMMMd().format(profile.dob!) : 'N/A'}'),
+                Text('Gender: ${profile.gender ?? 'N/A'}'),
+                Text('Diabetic Status: ${profile.sugarScenario ?? 'N/A'}'),
+                const Divider(height: 20),
+                Text('Height: ${profile.height.toStringAsFixed(1)} $heightUnit'),
+                Text('Weight: ${profile.weight.toStringAsFixed(1)} $weightUnit'),
+                Text('Target Weight: ${profile.targetWeight.toStringAsFixed(1)} $weightUnit'),
+                Text('BMI: ${profile.bmi.toStringAsFixed(1)}'),
+                const Divider(height: 20),
+                Text('Suitable Sugar: ${profile.suitableSugarMin?.toStringAsFixed(0) ?? 'N/A'} - ${profile.suitableSugarMax?.toStringAsFixed(0) ?? 'N/A'} mg/dL'),
+                Text('Suitable BP: ${profile.suitableSystolicMin?.toString() ?? 'N/A'}/${profile.suitableDiastolicMin?.toString() ?? 'N/A'} - ${profile.suitableSystolicMax?.toString() ?? 'N/A'}/${profile.suitableDiastolicMax?.toString() ?? 'N/A'} mmHg'),
+                Text('Suitable Pulse: ${profile.suitablePulseMin?.toString() ?? 'N/A'} - ${profile.suitablePulseMax?.toString() ?? 'N/A'} bpm'),
+                const Divider(height: 20),
+                Text(
+                    'Date Range: ${DateFormat.yMMMd().format(startDate)} - ${DateFormat.yMMMd().format(endDate)}'),
+              ],
             ),
+          ),
+        ],
+    );
+  }
+
+  Widget _buildMeasurementBox(String title, String value, String unit, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: color, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            Text('$value $unit', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           ],
         ),
       ),
     );
+  }
+
+  Color _getSugarStatusColor(double value) {
+    if (widget.userProfile.suitableSugarMin == null || widget.userProfile.suitableSugarMax == null) {
+      return Colors.grey;
+    }
+    if (value >= widget.userProfile.suitableSugarMin! && value <= widget.userProfile.suitableSugarMax!) {
+      return Colors.green;
+    } else if (value < widget.userProfile.suitableSugarMin! * 0.8 || value > widget.userProfile.suitableSugarMax! * 1.2) {
+      return Colors.red;
+    } else {
+      return Colors.orange;
+    }
+  }
+
+  Color _getBpStatusColor(double systolic, double diastolic) {
+    if (widget.userProfile.suitableSystolicMin == null || widget.userProfile.suitableSystolicMax == null ||
+        widget.userProfile.suitableDiastolicMin == null || widget.userProfile.suitableDiastolicMax == null) {
+      return Colors.grey;
+    }
+    if (systolic >= widget.userProfile.suitableSystolicMin! && systolic <= widget.userProfile.suitableSystolicMax! &&
+        diastolic >= widget.userProfile.suitableDiastolicMin! && diastolic <= widget.userProfile.suitableDiastolicMax!) {
+      return Colors.green;
+    } else if (systolic < widget.userProfile.suitableSystolicMin! * 0.8 || systolic > widget.userProfile.suitableSystolicMax! * 1.2 ||
+               diastolic < widget.userProfile.suitableDiastolicMin! * 0.8 || diastolic > widget.userProfile.suitableDiastolicMax! * 1.2) {
+      return Colors.red;
+    } else {
+      return Colors.orange;
+    }
+  }
+
+  Color _getPulseStatusColor(double value) {
+    if (widget.userProfile.suitablePulseMin == null || widget.userProfile.suitablePulseMax == null) {
+      return Colors.grey;
+    }
+    if (value >= widget.userProfile.suitablePulseMin! && value <= widget.userProfile.suitablePulseMax!) {
+      return Colors.green;
+    } else if (value < widget.userProfile.suitablePulseMin! * 0.8 || value > widget.userProfile.suitablePulseMax! * 1.2) {
+      return Colors.red;
+    } else {
+      return Colors.orange;
+    }
   }
 
   Widget _buildSummary(
       List<BPRecord> bpRecords, List<SugarRecord> sugarRecords) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final double avgGlucose = _avg(sugarRecords, (r) => r.value);
+    final double minGlucose = _min(sugarRecords, (r) => r.value);
+    final double maxGlucose = _max(sugarRecords, (r) => r.value);
+
+    final double avgSystolic = _avg(bpRecords, (r) => r.systolic);
+    final double minSystolic = _min(bpRecords, (r) => r.systolic);
+    final double maxSystolic = _max(bpRecords, (r) => r.systolic);
+
+    final double avgDiastolic = _avg(bpRecords, (r) => r.diastolic);
+    final double minDiastolic = _min(bpRecords, (r) => r.diastolic);
+    final double maxDiastolic = _max(bpRecords, (r) => r.diastolic);
+
+    final double avgPulse = _avg(bpRecords, (r) => r.pulseRate);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
             Icon(Icons.article, size: 40, color: Theme.of(context).colorScheme.secondary),
             const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Summary',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Divider(height: 20),
-                  if (sugarRecords.isNotEmpty)
-                    Text(
-                        'Avg Glucose: ${_avg(sugarRecords, (r) => r.value).toStringAsFixed(1)} mg/dL'),
-                  if (bpRecords.isNotEmpty) ...[
-                    Text(
-                        'Avg BP: ${_avg(bpRecords, (r) => r.systolic).round()}/${_avg(bpRecords, (r) => r.diastolic).round()} mmHg'),
-                    Text(
-                        'Avg Pulse: ${_avg(bpRecords, (r) => r.pulseRate).round()} bpm'),
-                  ],
-                  if (sugarRecords.isEmpty && bpRecords.isEmpty)
-                    const Text('No data available for this period.')
-                ],
-              ),
-            ),
+            const Text('Summary',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-      ),
+        const Divider(height: 20),
+        if (sugarRecords.isEmpty && bpRecords.isEmpty)
+          const Text('No data available for this period.')
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Glucose Summary
+              const Text('Glucose (mg/dL)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildMeasurementBox('Min', minGlucose.toStringAsFixed(1), 'mg/dL', _getSugarStatusColor(minGlucose)),
+                  _buildMeasurementBox('Max', maxGlucose.toStringAsFixed(1), 'mg/dL', _getSugarStatusColor(maxGlucose)),
+                  _buildMeasurementBox('Avg', avgGlucose.toStringAsFixed(1), 'mg/dL', _getSugarStatusColor(avgGlucose)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Blood Pressure Summary
+              const Text('Blood Pressure (mmHg)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildMeasurementBox('Min', '${minSystolic.round()}/${minDiastolic.round()}', 'mmHg', _getBpStatusColor(minSystolic, minDiastolic)),
+                  _buildMeasurementBox('Max', '${maxSystolic.round()}/${maxDiastolic.round()}', 'mmHg', _getBpStatusColor(maxSystolic, maxDiastolic)),
+                  _buildMeasurementBox('Avg', '${avgSystolic.round()}/${avgDiastolic.round()}', 'mmHg', _getBpStatusColor(avgSystolic, avgDiastolic)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Pulse Summary
+              const Text('Pulse (bpm)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildMeasurementBox(
+                    'Avg',
+                    avgPulse.round().toString(),
+                    'bpm',
+                    _getPulseStatusColor(avgPulse),
+                  ),
+                ],
+              ),
+            ],
+          ),
+      ],
     );
   }
 
   Widget _buildAnalysis(String analysisText) {
-    return Card(
-      elevation: 2,
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.analytics, size: 40, color: Colors.blue.shade800),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Health Analysis',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800)),
-                  const Divider(height: 20),
-                  Text(analysisText, style: const TextStyle(height: 1.5)),
-                ],
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+          Icon(Icons.analytics, size: 40, color: Colors.blue.shade800),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Health Analysis',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800)),
+                const Divider(height: 20),
+                Text(analysisText, style: const TextStyle(height: 1.5)),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        ],
+    );
+  }
+
+  Widget _coloredDivider({Color color = Colors.grey, double thickness = 1.0, double height = 24.0}) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: height / 2 - thickness / 2),
+      height: thickness,
+      color: color,
     );
   }
 
   double _avg(List<dynamic> records, num Function(dynamic) selector) {
     if (records.isEmpty) return 0.0;
     return records.map(selector).reduce((a, b) => a + b) / records.length;
+  }
+
+  double _min(List<dynamic> records, num Function(dynamic) selector) {
+    if (records.isEmpty) return 0.0;
+    return records.map(selector).reduce((a, b) => a < b ? a : b).toDouble();
+  }
+
+  double _max(List<dynamic> records, num Function(dynamic) selector) {
+    if (records.isEmpty) return 0.0;
+    return records.map(selector).reduce((a, b) => a > b ? a : b).toDouble();
   }
 }
