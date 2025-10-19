@@ -7,7 +7,6 @@ import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
-import 'package:provider/provider.dart';
 import 'dart:math'; // Import for max() function
 
 // Utility class to generate individual health trend charts
