@@ -7,6 +7,7 @@ import 'package:jagadiri/models/user_profile.dart';
 import 'package:jagadiri/services/health_analysis_service.dart';
 import 'package:jagadiri/services/individual_health_trend_chart_generator.dart';
 import 'package:jagadiri/services/individual_health_trend_service.dart';
+import 'package:jagadiri/services/database_service.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
@@ -129,10 +130,20 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
   Widget? _glucoseChart;
   Widget? _bpChart;
   Widget? _pulseChart;
+  Map<String, Map<String, List<String>>> _chartDescriptions = {};
+
+  Future<void> _loadChartDescriptions() async {
+    final dbService = DatabaseService();
+    final descriptions = await dbService.getChartDescriptions();
+    setState(() {
+      _chartDescriptions = descriptions;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    _loadChartDescriptions();
     final analysisService = HealthAnalysisService();
     _analysisText = analysisService.generateAnalysisText(
       sugarReadings: widget.sugarRecords,
@@ -709,246 +720,12 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
     return records.map(selector).reduce((a, b) => a > b ? a : b).toDouble();
   }
 
-  // Placeholder for database retrieval of chart descriptions
-  Map<String, Map<String, List<String>>> _fetchChartDescriptionsFromDb() {
-    // In a real application, this data would be fetched from a database
-    // at app initialization or as needed. For demonstration, it's hardcoded here.
-    return {
-      'Glucose': {
-        'high': [
-          'Your glucose levels are consistently elevated. Consider consulting a healthcare professional for dietary and lifestyle adjustments.',
-          'Elevated glucose readings suggest a need for closer monitoring. Review your recent food intake and activity levels.',
-          'A pattern of high glucose is observed. This may indicate insulin resistance or other metabolic concerns.',
-          'Sustained high glucose levels can lead to long-term health complications. Proactive management is key.',
-          'Noticeable spikes in glucose after meals. Evaluate carbohydrate intake and portion sizes.',
-          'Your average glucose is above the recommended range. Focus on balanced nutrition and regular physical activity.',
-          'Frequent high glucose readings. This trend requires attention to prevent further progression.',
-          'Glucose levels are not within optimal range. Seek guidance on personalized dietary plans.',
-          'Persistent hyperglycemia detected. Discuss potential medication adjustments with your doctor.',
-          'Your body\'s glucose regulation appears challenged. Lifestyle modifications are highly recommended.',
-        ],
-        'low': [
-          'Your glucose levels are occasionally dipping too low. Ensure regular meals and snacks to maintain stable blood sugar.',
-          'Some low glucose readings are present. Be mindful of symptoms like dizziness or weakness and carry a quick source of sugar.',
-          'Hypoglycemic episodes are noted. Discuss your medication and meal timing with your doctor.',
-          'Frequent low glucose readings can be dangerous. Always have a rapid-acting carbohydrate source available.',
-          'Noticeable drops in glucose before meals or during exercise. Adjust your pre-meal or pre-exercise nutrition.',
-          'Your average glucose is below the recommended range. Ensure adequate caloric intake and consistent meal patterns.',
-          'Recurrent low glucose levels. This trend requires attention to prevent adverse events.',
-          'Glucose levels are not within optimal range. Seek guidance on personalized dietary plans.',
-          'Persistent hypoglycemia detected. Discuss potential medication adjustments with your doctor.',
-          'Your body\'s glucose regulation appears challenged. Lifestyle modifications are highly recommended.',
-        ],
-        'stable': [
-          'Your glucose levels show good stability within the target range. Keep up the excellent work with your diet and exercise.',
-          'Consistent glucose readings indicate effective management. Continue your current health regimen.',
-          'Excellent glucose control observed. This trend is highly beneficial for long-term health.',
-          'Your glucose levels are well-managed and within a healthy range. This is a positive indicator of your health.',
-          'Remarkable stability in glucose readings. Your adherence to a healthy lifestyle is commendable.',
-          'Optimal glucose balance achieved. This consistency supports overall well-being.',
-          'Glucose levels are consistently within the desired range. Maintain your current health practices.',
-          'A very favorable glucose profile. This reflects good metabolic health.',
-          'Your glucose management is exemplary. Continue to prioritize your health.',
-          'This stable glucose trend is a strong foundation for preventing future health issues.',
-        ],
-        'fluctuating': [
-          'Significant fluctuations in glucose levels are apparent. Identifying triggers from diet, exercise, or stress could be beneficial.',
-          'Your glucose readings are quite variable. A more consistent routine might help stabilize these levels.',
-          'Wide swings in glucose are noted. This pattern can be challenging to manage and warrants further investigation.',
-          'Erratic glucose patterns suggest a need for closer examination of daily habits. Consider a food and activity log.',
-          'Unpredictable glucose spikes and drops. This variability can be taxing on your body.',
-          'Your glucose levels are unstable. Work with a healthcare provider to pinpoint the causes.',
-          'Frequent and large variations in glucose. This indicates a need for more precise management strategies.',
-          'Glucose control is inconsistent. Review your medication, diet, and exercise for potential adjustments.',
-          'The rollercoaster pattern of your glucose levels requires attention. Aim for smoother transitions.',
-          'Your body\'s glucose response is unpredictable. A structured approach to diet and activity may help.',
-        ],
-        'improving': [
-          'Your glucose trend shows positive improvement. Your efforts in managing your health are paying off.',
-          'A downward trend towards healthier glucose levels is observed. Continue with your current strategies.',
-          'Encouraging signs of better glucose control are visible. This is a great step towards your health goals.',
-          'The recent data indicates a favorable shift in your glucose profile. Keep progressing with your healthy choices.',
-          'Your glucose levels are gradually moving into a healthier range. This sustained effort is highly beneficial.',
-          'Positive changes in glucose management are evident. Your dedication to health is yielding results.',
-          'An improving glucose trend is a strong indicator of effective self-care. Celebrate your progress.',
-          'Your glucose readings are becoming more favorable. This positive momentum should be maintained.',
-          'The trajectory of your glucose levels is improving. This is a testament to your commitment.',
-          'Continued improvement in glucose control. This is a significant achievement for your health.',
-        ],
-        'worsening': [
-          'Your glucose trend indicates a worsening pattern. It\'s important to re-evaluate your management plan and seek medical advice.',
-          'An upward trend in glucose levels is noted. This requires immediate attention to prevent further complications.',
-          'The recent data suggests a decline in glucose control. Consider reviewing your diet, exercise, and medication adherence.',
-          'A concerning upward shift in your glucose profile. Prompt action is needed to reverse this trend.',
-          'Your glucose levels are gradually moving into an unhealthy range. This requires urgent attention.',
-          'Negative changes in glucose management are evident. Reassess your current health practices.',
-          'A worsening glucose trend is a strong indicator that adjustments are needed. Seek professional guidance.',
-          'Your glucose readings are becoming less favorable. This negative momentum should be addressed.',
-          'The trajectory of your glucose levels is worsening. This is a critical time to intervene.',
-          'Continued deterioration in glucose control. This is a serious concern for your health.',
-        ],
-      },
-      'Blood Pressure': {
-        'high': [
-          'Your blood pressure readings are consistently high. Regular monitoring and lifestyle changes are crucial.',
-          'Elevated blood pressure is observed. Consult your doctor to discuss management strategies.',
-          'A pattern of hypertension is noted. Reducing sodium intake and increasing physical activity can help.',
-          'Sustained high blood pressure can lead to serious cardiovascular issues. Proactive management is essential.',
-          'Noticeable spikes in blood pressure. Evaluate stress levels and dietary habits.',
-          'Your average blood pressure is above the recommended range. Focus on heart-healthy nutrition and regular exercise.',
-          'Frequent high blood pressure readings. This trend requires attention to prevent further complications.',
-          'Blood pressure levels are not within optimal range. Seek guidance on personalized management plans.',
-          'Persistent hypertension detected. Discuss potential medication adjustments with your doctor.',
-          'Your cardiovascular system appears under strain. Lifestyle modifications are highly recommended.',
-        ],
-        'low': [
-          'Some low blood pressure readings are present. Ensure adequate hydration and discuss with your doctor if symptoms occur.',
-          'Hypotension episodes are noted. Be cautious when changing positions quickly.',
-          'Your blood pressure is occasionally dipping too low. Review your medication and hydration habits.',
-          'Frequent low blood pressure readings can cause dizziness and fatigue. Ensure proper fluid intake.',
-          'Noticeable drops in blood pressure. This might be related to medication or dehydration.',
-          'Your average blood pressure is below the recommended range. Ensure adequate fluid and electrolyte balance.',
-          'Recurrent low blood pressure levels. This trend requires attention to prevent adverse events.',
-          'Blood pressure levels are not within optimal range. Seek guidance on personalized management plans.',
-          'Persistent hypotension detected. Discuss potential medication adjustments with your doctor.',
-          'Your cardiovascular system appears under-perfused. Lifestyle modifications are highly recommended.',
-        ],
-        'stable': [
-          'Your blood pressure levels show good stability within the target range. Maintain your healthy habits.',
-          'Consistent blood pressure readings indicate effective management. Continue your current health regimen.',
-          'Excellent blood pressure control observed. This trend is highly beneficial for cardiovascular health.',
-          'Your blood pressure levels are well-managed and within a healthy range. This is a positive indicator of your health.',
-          'Remarkable stability in blood pressure readings. Your adherence to a healthy lifestyle is commendable.',
-          'Optimal blood pressure balance achieved. This consistency supports overall well-being.',
-          'Blood pressure levels are consistently within the desired range. Maintain your current health practices.',
-          'A very favorable blood pressure profile. This reflects good cardiovascular health.',
-          'Your blood pressure management is exemplary. Continue to prioritize your heart health.',
-          'This stable blood pressure trend is a strong foundation for preventing future health issues.',
-        ],
-        'fluctuating': [
-          'Significant fluctuations in blood pressure are apparent. Stress, diet, and medication timing can influence these variations.',
-          'Your blood pressure readings are quite variable. A more consistent routine might help stabilize these levels.',
-          'Wide swings in blood pressure are noted. This pattern can be challenging to manage and warrants further investigation.',
-          'Erratic blood pressure patterns suggest a need for closer examination of daily habits. Consider a stress management plan.',
-          'Unpredictable blood pressure spikes and drops. This variability can be taxing on your cardiovascular system.',
-          'Your blood pressure levels are unstable. Work with a healthcare provider to pinpoint the causes.',
-          'Frequent and large variations in blood pressure. This indicates a need for more precise management strategies.',
-          'Blood pressure control is inconsistent. Review your medication, diet, and exercise for potential adjustments.',
-          'The rollercoaster pattern of your blood pressure levels requires attention. Aim for smoother transitions.',
-          'Your cardiovascular response is unpredictable. A structured approach to stress and activity may help.',
-        ],
-        'improving': [
-          'Your blood pressure trend shows positive improvement. Your efforts in managing your health are paying off.',
-          'A downward trend towards healthier blood pressure levels is observed. Continue with your current strategies.',
-          'Encouraging signs of better blood pressure control are visible. This is a great step towards your heart health.',
-          'The recent data indicates a favorable shift in your blood pressure profile. Keep progressing with your healthy choices.',
-          'Your blood pressure levels are gradually moving into a healthier range. This sustained effort is highly beneficial.',
-          'Positive changes in blood pressure management are evident. Your dedication to health is yielding results.',
-          'An improving blood pressure trend is a strong indicator of effective self-care. Celebrate your progress.',
-          'Your blood pressure readings are becoming more favorable. This positive momentum should be maintained.',
-          'The trajectory of your blood pressure levels is improving. This is a testament to your commitment.',
-          'Continued improvement in blood pressure control. This is a significant achievement for your heart health.',
-        ],
-        'worsening': [
-          'Your blood pressure trend indicates a worsening pattern. It\'s important to re-evaluate your management plan and seek medical advice.',
-          'An upward trend in blood pressure levels is noted. This requires immediate attention to prevent further complications.',
-          'The recent data suggests a decline in blood pressure control. Consider reviewing your diet, exercise, and medication adherence.',
-          'A concerning upward shift in your blood pressure profile. Prompt action is needed to reverse this trend.',
-          'Your blood pressure levels are gradually moving into an unhealthy range. This requires urgent attention.',
-          'Negative changes in blood pressure management are evident. Reassess your current health practices.',
-          'A worsening blood pressure trend is a strong indicator that adjustments are needed. Seek professional guidance.',
-          'Your blood pressure readings are becoming less favorable. This negative momentum should be addressed.',
-          'The trajectory of your blood pressure levels is worsening. This is a critical time to intervene.',
-          'Continued deterioration in blood pressure control. This is a serious concern for your heart health.',
-        ],
-      },
-      'Pulse': {
-        'high': [
-          'Your pulse rate is consistently elevated. Factors like stress, caffeine, or activity levels might be contributing.',
-          'Elevated pulse readings are observed. If persistent, consult a healthcare professional.',
-          'A pattern of high pulse rate is noted. Ensure adequate rest and hydration.',
-          'Sustained high pulse rate can indicate increased cardiovascular demand. Monitor your activity and stress.',
-          'Noticeable spikes in pulse rate. Evaluate your recent physical exertion or emotional state.',
-          'Your average pulse rate is above the recommended range. Consider relaxation techniques and regular, moderate exercise.',
-          'Frequent high pulse rate readings. This trend requires attention to identify underlying causes.',
-          'Pulse rate levels are not within optimal range. Seek guidance on personalized management plans.',
-          'Persistent tachycardia detected. Discuss potential medication adjustments with your doctor.',
-          'Your heart rate response appears elevated. Lifestyle modifications are highly recommended.',
-        ],
-        'low': [
-          'Some low pulse rate readings are present. If accompanied by symptoms, seek medical advice.',
-          'Bradycardia episodes are noted. This might be normal for athletes, but otherwise warrants investigation.',
-          'Your pulse rate is occasionally dipping too low. Review your medication and activity levels.',
-          'Frequent low pulse rate readings can cause fatigue or dizziness. Ensure proper rest and hydration.',
-          'Noticeable drops in pulse rate. This might be related to medication or a high level of fitness.',
-          'Your average pulse rate is below the recommended range. If symptomatic, consult a healthcare provider.',
-          'Recurrent low pulse rate levels. This trend requires attention to identify underlying causes.',
-          'Pulse rate levels are not within optimal range. Seek guidance on personalized management plans.',
-          'Persistent bradycardia detected. Discuss potential medication adjustments with your doctor.',
-          'Your heart rate response appears suppressed. Lifestyle modifications are highly recommended.',
-        ],
-        'stable': [
-          'Your pulse rate shows good stability within the target range. Maintain your healthy habits.',
-          'Consistent pulse rate readings indicate effective management. Continue your current health regimen.',
-          'Excellent pulse rate control observed. This trend is highly beneficial for cardiovascular health.',
-          'Your pulse rate levels are well-managed and within a healthy range. This is a positive indicator of your health.',
-          'Remarkable stability in pulse rate readings. Your adherence to a healthy lifestyle is commendable.',
-          'Optimal pulse rate balance achieved. This consistency supports overall well-being.',
-          'Pulse rate levels are consistently within the desired range. Maintain your current health practices.',
-          'A very favorable pulse rate profile. This reflects good cardiovascular health.',
-          'Your pulse rate management is exemplary. Continue to prioritize your heart health.',
-          'This stable pulse rate trend is a strong foundation for preventing future health issues.',
-        ],
-        'fluctuating': [
-          'Significant fluctuations in pulse rate are apparent. Stress, hydration, and activity levels can influence these variations.',
-          'Your pulse rate readings are quite variable. A more consistent routine might help stabilize these levels.',
-          'Wide swings in pulse rate are noted. This pattern can be challenging to manage and warrants further investigation.',
-          'Erratic pulse rate patterns suggest a need for closer examination of daily habits. Consider stress reduction techniques.',
-          'Unpredictable pulse rate spikes and drops. This variability can be taxing on your cardiovascular system.',
-          'Your pulse rate levels are unstable. Work with a healthcare provider to pinpoint the causes.',
-          'Frequent and large variations in pulse rate. This indicates a need for more precise management strategies.',
-          'Pulse rate control is inconsistent. Review your medication, diet, and exercise for potential adjustments.',
-          'The rollercoaster pattern of your pulse rate levels requires attention. Aim for smoother transitions.',
-          'Your heart rate response is unpredictable. A structured approach to stress and activity may help.',
-        ],
-        'improving': [
-          'Your pulse rate trend shows positive improvement. Your efforts in managing your health are paying off.',
-          'A downward trend towards healthier pulse rate levels is observed. Continue with your current strategies.',
-          'Encouraging signs of better pulse rate control are visible. This is a great step towards your heart health.',
-          'The recent data indicates a favorable shift in your pulse rate profile. Keep progressing with your healthy choices.',
-          'Your pulse rate levels are gradually moving into a healthier range. This sustained effort is highly beneficial.',
-          'Positive changes in pulse rate management are evident. Your dedication to health is yielding results.',
-          'An improving pulse rate trend is a strong indicator of effective self-care. Celebrate your progress.',
-          'Your pulse rate readings are becoming more favorable. This positive momentum should be maintained.',
-          'The trajectory of your pulse rate levels is improving. This is a testament to your commitment.',
-          'Continued improvement in pulse rate control. This is a significant achievement for your heart health.',
-        ],
-        'worsening': [
-          'Your pulse rate trend indicates a worsening pattern. It\'s important to re-evaluate your management plan and seek medical advice.',
-          'An upward trend in pulse rate levels is noted. This requires immediate attention to prevent further complications.',
-          'The recent data suggests a decline in pulse rate control. Consider reviewing your diet, exercise, and medication adherence.',
-          'A concerning upward shift in your pulse rate profile. Prompt action is needed to reverse this trend.',
-          'Your pulse rate levels are gradually moving into an unhealthy range. This requires urgent attention.',
-          'Negative changes in pulse rate management are evident. Reassess your current health practices.',
-          'A worsening pulse rate trend is a strong indicator that adjustments are needed. Seek professional guidance.',
-          'Your pulse rate readings are becoming less favorable. This negative momentum should be addressed.',
-          'The trajectory of your pulse rate levels is worsening. This is a critical time to intervene.',
-          'Continued deterioration in pulse rate control. This is a serious concern for your heart health.',
-        ],
-      },
-    };
-  }
-
-
-
-
-
   String _generateChartDescription(String chartType, List<dynamic> records) {
     if (records.isEmpty) {
       return 'No data available to generate a trend description for $chartType.';
     }
 
-    final Map<String, Map<String, List<String>>> descriptionsFromDb = _fetchChartDescriptionsFromDb();
+    final Map<String, Map<String, List<String>>> descriptionsFromDb = _chartDescriptions;
     String trend = 'stable'; // Default trend
 
     // Basic trend analysis (can be expanded for more sophistication)
