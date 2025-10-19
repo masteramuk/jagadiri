@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -49,25 +50,33 @@ class IndividualHealthTrendChartGenerator {
     fontSize: 10,
   );
 
+  // Date format for X-axis
+  static final DateFormat _dateFormat = DateFormat('d/M/yy'); // New condensed format
+
   // --- 1. Glucose Titles ---
-  static FlTitlesData _glucoseTitlesData(List<FlSpot> spots) {
+  static FlTitlesData _glucoseTitlesData(List<SugarRecord> records) {
     return FlTitlesData(
       show: true,
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       bottomTitles: AxisTitles(
+        axisNameWidget: const Text('Record Date', style: _titleStyle),
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: (spots.length / 5).clamp(1.0, 5.0).toDouble(), // Show max 5 labels, minimum 1 interval
+          interval: (records.length / 5).clamp(1.0, 5.0).toDouble(), // Show max 5 labels, minimum 1 interval
           getTitlesWidget: (value, meta) {
-            // Display the record index (e.g., 1, 2, 3...)
-            return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
-              space: 4.0,
-              child: Text((value.toInt() + 1).toString(), style: _titleStyle),
-              meta: meta,
-            );
+            final index = value.toInt();
+            if (index >= 0 && index < records.length) {
+              final date = records[index].date;
+              // Display the date (e.g., 15/8/24)
+              return SideTitleWidget(
+                space: 4.0,
+                child: Text(_dateFormat.format(date), style: _titleStyle),
+                meta: meta,
+              );
+            }
+            return Container();
           },
         ),
       ),
@@ -79,7 +88,6 @@ class IndividualHealthTrendChartGenerator {
           reservedSize: 40,
           getTitlesWidget: (value, meta) {
             return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
               space: 8.0,
               child: Text(value.toInt().toString(), style: _titleStyle),
               meta: meta,
@@ -91,23 +99,28 @@ class IndividualHealthTrendChartGenerator {
   }
 
   // --- 2. BP Titles ---
-  static FlTitlesData _bpTitlesData(List<FlSpot> spots) {
+  static FlTitlesData _bpTitlesData(List<BPRecord> records) {
     return FlTitlesData(
       show: true,
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       bottomTitles: AxisTitles(
+        axisNameWidget: const Text('Record Date', style: _titleStyle),
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: (spots.length / 5).clamp(1.0, 5.0).toDouble(),
+          interval: (records.length / 5).clamp(1.0, 5.0).toDouble(),
           getTitlesWidget: (value, meta) {
-            return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
-              space: 4.0,
-              child: Text((value.toInt() + 1).toString(), style: _titleStyle),
-              meta: meta,
-            );
+            final index = value.toInt();
+            if (index >= 0 && index < records.length) {
+              final date = records[index].date;
+              return SideTitleWidget(
+                space: 4.0,
+                child: Text(_dateFormat.format(date), style: _titleStyle),
+                meta: meta,
+              );
+            }
+            return Container();
           },
         ),
       ),
@@ -119,7 +132,6 @@ class IndividualHealthTrendChartGenerator {
           reservedSize: 40,
           getTitlesWidget: (value, meta) {
             return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
               space: 8.0,
               child: Text(value.toInt().toString(), style: _titleStyle),
               meta: meta,
@@ -131,23 +143,28 @@ class IndividualHealthTrendChartGenerator {
   }
 
   // --- 3. Pulse Titles ---
-  static FlTitlesData _pulseTitlesData(List<FlSpot> spots) {
+  static FlTitlesData _pulseTitlesData(List<BPRecord> records) {
     return FlTitlesData(
       show: true,
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       bottomTitles: AxisTitles(
+        axisNameWidget: const Text('Record Date', style: _titleStyle),
         sideTitles: SideTitles(
           showTitles: true,
           reservedSize: 30,
-          interval: (spots.length / 5).clamp(1.0, 5.0).toDouble(),
+          interval: (records.length / 5).clamp(1.0, 5.0).toDouble(),
           getTitlesWidget: (value, meta) {
-            return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
-              space: 4.0,
-              child: Text((value.toInt() + 1).toString(), style: _titleStyle),
-              meta: meta,
-            );
+            final index = value.toInt();
+            if (index >= 0 && index < records.length) {
+              final date = records[index].date;
+              return SideTitleWidget(
+                space: 4.0,
+                child: Text(_dateFormat.format(date), style: _titleStyle),
+                meta: meta,
+              );
+            }
+            return Container();
           },
         ),
       ),
@@ -159,7 +176,6 @@ class IndividualHealthTrendChartGenerator {
           reservedSize: 40,
           getTitlesWidget: (value, meta) {
             return SideTitleWidget(
-              // axisSide: meta.axisSide, // REMOVED: Incompatible with fl_chart 1.1.1
               space: 8.0,
               child: Text(value.toInt().toString(), style: _titleStyle),
               meta: meta,
@@ -169,7 +185,6 @@ class IndividualHealthTrendChartGenerator {
       ),
     );
   }
-
 
   /*
   static Widget buildGlucoseChart(List<SugarRecord> records) {
@@ -389,40 +404,47 @@ class IndividualHealthTrendChartGenerator {
     final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 10;
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 10;
 
-    return LineChart(
-      LineChartData(
-        minY: minY.floorToDouble(), // Dynamic Y min
-        maxY: maxY.ceilToDouble(), // Dynamic Y max
-        minX: 0,
-        maxX: spots.isEmpty ? 0 : spots.length.toDouble() - 1,
-        // Use the new Glucose title data
-        titlesData: _glucoseTitlesData(spots),
-        gridData: const FlGridData(show: true), // Show grid for readability
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            color: Colors.redAccent,
-            barWidth: 2,
-            dotData: const FlDotData(show: true), // <--- SHOW DOTS
-          ),
-        ],
-        // Add a simple legend/tooltip to show what the line represents
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: maxY.ceilToDouble() - 1, // Place near the top
+    // Determine chart width based on the number of records.
+    // For many records (e.g., > 10), we can set a fixed width per record to allow scrolling.
+    final chartWidth = max(350.0, records.length * 70.0); // Minimum 350, then 70 pixels per record
+
+    return SizedBox(
+      width: chartWidth, // Set a wide width for scrolling
+      child: LineChart(
+        LineChartData(
+          minY: minY.floorToDouble(), // Dynamic Y min
+          maxY: maxY.ceilToDouble(), // Dynamic Y max
+          minX: 0,
+          maxX: spots.isEmpty ? 0 : spots.length.toDouble() - 1,
+          // Use the new Glucose title data, passing the original records list
+          titlesData: _glucoseTitlesData(records),
+          gridData: const FlGridData(show: true), // Show grid for readability
+          borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
               color: Colors.redAccent,
-              strokeWidth: 0,
-              label: HorizontalLineLabel(
-                show: true,
-                alignment: Alignment.topRight,
-                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-                labelResolver: (line) => ' Glucose Trend ',
-              ),
+              barWidth: 2,
+              dotData: const FlDotData(show: true), // <--- SHOW DOTS
             ),
           ],
+          // Add a simple legend/tooltip to show what the line represents
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              HorizontalLine(
+                y: maxY.ceilToDouble() - 1, // Place near the top
+                color: Colors.redAccent,
+                strokeWidth: 0,
+                label: HorizontalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                  labelResolver: (line) => ' Glucose Trend ',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -439,58 +461,64 @@ class IndividualHealthTrendChartGenerator {
 
     final double maxX = records.isEmpty ? 0 : records.length.toDouble() - 1;
 
-    return LineChart(
-      LineChartData(
-        minY: minY.floorToDouble(),
-        maxY: maxY.ceilToDouble(),
-        minX: 0,
-        maxX: maxX,
-        // Use the new BP title data
-        titlesData: _bpTitlesData(systolicSpots),
-        gridData: const FlGridData(show: true),
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
-        lineBarsData: [
-          LineChartBarData(
-            spots: systolicSpots,
-            isCurved: true,
-            color: Colors.blue,
-            barWidth: 2,
-            dotData: const FlDotData(show: true), // <--- SHOW DOTS
-          ),
-          LineChartBarData(
-            spots: diastolicSpots,
-            isCurved: true,
-            color: Colors.green,
-            barWidth: 2,
-            dotData: const FlDotData(show: true), // <--- SHOW DOTS
-          ),
-        ],
-        // Add a simple legend/tooltip to show what the lines represent
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: maxY.ceilToDouble() - 1, // Place near the top
+    // Determine chart width based on the number of records.
+    final chartWidth = max(350.0, records.length * 70.0); // Minimum 350, then 70 pixels per record
+
+    return SizedBox(
+      width: chartWidth, // Set a wide width for scrolling
+      child: LineChart(
+        LineChartData(
+          minY: minY.floorToDouble(),
+          maxY: maxY.ceilToDouble(),
+          minX: 0,
+          maxX: maxX,
+          // Use the new BP title data, passing the original records list
+          titlesData: _bpTitlesData(records),
+          gridData: const FlGridData(show: true),
+          borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
+          lineBarsData: [
+            LineChartBarData(
+              spots: systolicSpots,
+              isCurved: true,
               color: Colors.blue,
-              strokeWidth: 0,
-              label: HorizontalLineLabel(
-                show: true,
-                alignment: Alignment.topRight,
-                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-                labelResolver: (line) => ' Systolic ',
-              ),
+              barWidth: 2,
+              dotData: const FlDotData(show: true), // <--- SHOW DOTS
             ),
-            HorizontalLine(
-              y: maxY.ceilToDouble() - 10, // Place slightly below systolic label
+            LineChartBarData(
+              spots: diastolicSpots,
+              isCurved: true,
               color: Colors.green,
-              strokeWidth: 0,
-              label: HorizontalLineLabel(
-                show: true,
-                alignment: Alignment.topRight,
-                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                labelResolver: (line) => ' Diastolic ',
-              ),
+              barWidth: 2,
+              dotData: const FlDotData(show: true), // <--- SHOW DOTS
             ),
           ],
+          // Add a simple legend/tooltip to show what the lines represent
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              HorizontalLine(
+                y: maxY.ceilToDouble() - 1, // Place near the top
+                color: Colors.blue,
+                strokeWidth: 0,
+                label: HorizontalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                  labelResolver: (line) => ' Systolic ',
+                ),
+              ),
+              HorizontalLine(
+                y: maxY.ceilToDouble() - 10, // Place slightly below systolic label
+                color: Colors.green,
+                strokeWidth: 0,
+                label: HorizontalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                  labelResolver: (line) => ' Diastolic ',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -502,40 +530,46 @@ class IndividualHealthTrendChartGenerator {
     final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 10;
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 10;
 
-    return LineChart(
-      LineChartData(
-        minY: minY.floorToDouble(),
-        maxY: maxY.ceilToDouble(),
-        minX: 0,
-        maxX: spots.isEmpty ? 0 : spots.length.toDouble() - 1,
-        // Use the new Pulse title data
-        titlesData: _pulseTitlesData(spots),
-        gridData: const FlGridData(show: true),
-        borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            color: Colors.purple,
-            barWidth: 2,
-            dotData: const FlDotData(show: true), // <--- SHOW DOTS
-          ),
-        ],
-        // Add a simple legend/tooltip
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: maxY.ceilToDouble() - 1, // Place near the top
+    // Determine chart width based on the number of records.
+    final chartWidth = max(350.0, records.length * 70.0); // Minimum 350, then 70 pixels per record
+
+    return SizedBox(
+      width: chartWidth, // Set a wide width for scrolling
+      child: LineChart(
+        LineChartData(
+          minY: minY.floorToDouble(),
+          maxY: maxY.ceilToDouble(),
+          minX: 0,
+          maxX: spots.isEmpty ? 0 : spots.length.toDouble() - 1,
+          // Use the new Pulse title data, passing the original records list
+          titlesData: _pulseTitlesData(records),
+          gridData: const FlGridData(show: true),
+          borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300, width: 1)),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
               color: Colors.purple,
-              strokeWidth: 0,
-              label: HorizontalLineLabel(
-                show: true,
-                alignment: Alignment.topRight,
-                style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
-                labelResolver: (line) => ' Pulse Trend ',
-              ),
+              barWidth: 2,
+              dotData: const FlDotData(show: true), // <--- SHOW DOTS
             ),
           ],
+          // Add a simple legend/tooltip
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              HorizontalLine(
+                y: maxY.ceilToDouble() - 1, // Place near the top
+                color: Colors.purple,
+                strokeWidth: 0,
+                label: HorizontalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
+                  labelResolver: (line) => ' Pulse Trend ',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
