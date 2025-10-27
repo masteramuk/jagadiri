@@ -62,7 +62,7 @@ class IndividualHealthTrendService {
             pw.SizedBox(height: 16),
             buildHeader(userProfile, startDate, endDate),
             buildSummarySection(userProfile, bpReadings, sugarReadings),
-
+            pw.NewPage(),
             // --- ANALYSIS SECTION: Wrapped to prevent orphaned section title/huge gaps ---
             buildAnalysisSection(analysisText),
 
@@ -86,7 +86,7 @@ class IndividualHealthTrendService {
             if (bpReadings.isNotEmpty) pulseChartWidget,
             if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
 
-
+            pw.NewPage(),
             // --- DETAILED DATA SECTION: Wrapped inside its own function to keep titles with tables ---
             buildDetailedDataSection(bpReadings, sugarReadings),
           ];
@@ -126,8 +126,10 @@ class IndividualHealthTrendService {
             pw.SizedBox(height: 16),
             buildHeader(userProfile, startDate, endDate),
             buildSummarySection(userProfile, bpReadings, sugarReadings),
+            pw.NewPage(),
             buildAnalysisSection(analysisText),
             pw.SizedBox(height: 30),
+            pw.NewPage(),
             pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -137,10 +139,13 @@ class IndividualHealthTrendService {
                   if (sugarReadings.isNotEmpty) pw.SizedBox(height: 10),
                 ]
             ),
+            pw.NewPage(),
             if (bpReadings.isNotEmpty) buildChartImage('Blood Pressure Trend', bpChartBytes),
             if (bpReadings.isNotEmpty) pw.SizedBox(height: 10),
+            pw.NewPage(),
             if (bpReadings.isNotEmpty) buildChartImage('Pulse Trend', pulseChartBytes),
             if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
+            pw.NewPage(),
             buildDetailedDataSection(bpReadings, sugarReadings),
           ];
         },
