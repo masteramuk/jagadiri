@@ -5,9 +5,11 @@ import 'package:collection/collection.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 import '../models/user_profile.dart';
+import '../services/database_service.dart';
 
 class HealthAnalysisService {
   final Random _random = Random();
+  final DatabaseService _dbService = DatabaseService();
   /// Generates comprehensive health analysis text for any report.
   /// Reusable across all 5 report types.
   String generateAnalysisText({
@@ -178,6 +180,22 @@ class HealthAnalysisService {
     return buffer.toString();
   }
 
+  double _avg(List<dynamic> records, num Function(dynamic) selector) {
+    if (records.isEmpty) return 0.0;
+    final sum = records.map(selector).reduce((a, b) => a + b);
+    return (sum/records.length).toDouble();
+  }
+
+  double _min(List<dynamic> records, num Function(dynamic) selector) {
+    if (records.isEmpty) return 0.0;
+    return records.map(selector).reduce((a, b) => a < b ? a : b).toDouble();
+  }
+
+  double _max(List<dynamic> records, num Function(dynamic) selector) {
+    if (records.isEmpty) return 0.0;
+    return records.map(selector).reduce((a, b) => a > b ? a : b).toDouble();
+  }
+
   String _getWellnessTips() {
     const tips = [
       "💧 Morning hydration can help regulate blood pressure throughout the day.",
@@ -190,6 +208,77 @@ class HealthAnalysisService {
   }
 
   // --- NLG Templates ---
+
+  Future<String> generateChartDescription(String chartType, List<dynamic> records, UserProfile userProfile) async {
+    if (records.isEmpty) {
+      return 'No data available to generate a trend description for $chartType.';
+    }
+
+    final descriptionsFromDb = await _dbService.getChartDescriptions();
+    String trend = 'stable'; // Default trend
+
+    // Basic trend analysis (can be expanded for more sophistication)
+    if (chartType == 'Glucose' && records is List<SugarRecord>) {
+      final double avg = _avg(records, (r) => r.value);
+      final double min = _min(records, (r) => r.value);
+      final double max = _max(records, (r) => r.value);
+
+      if (userProfile.suitableSugarMin != null && userProfile.suitableSugarMax != null) {
+        if (avg > userProfile.suitableSugarMax! * 1.1) {
+          trend = 'high';
+        } else if (avg < userProfile.suitableSugarMin! * 0.9) {
+          trend = 'low';
+        } else if (max - min > (userProfile.suitableSugarMax! - userProfile.suitableSugarMin!) * 1.5) {
+          trend = 'fluctuating';
+        } else {
+          trend = 'stable';
+        }
+      }
+    } else if (chartType == 'Blood Pressure' && records is List<BPRecord>) {
+      final double avgSystolic = _avg(records, (r) => r.systolic);
+      final double avgDiastolic = _avg(records, (r) => r.diastolic);
+      final double minSystolic = _min(records, (r) => r.systolic);
+      final double maxSystolic = _max(records, (r) => r.systolic);
+      final double minDiastolic = _min(records, (r) => r.diastolic);
+      final double maxDiastolic = _max(records, (r) => r.diastolic);
+
+      if (userProfile.suitableSystolicMin != null && userProfile.suitableSystolicMax != null &&
+          userProfile.suitableDiastolicMin != null && userProfile.suitableDiastolicMax != null) {
+        if (avgSystolic > userProfile.suitableSystolicMax! * 1.1 || avgDiastolic > userProfile.suitableDiastolicMax! * 1.1) {
+          trend = 'high';
+        } else if (avgSystolic < userProfile.suitableSystolicMin! * 0.9 || avgDiastolic < userProfile.suitableDiastolicMin! * 0.9) {
+          trend = 'low';
+        } else if ((maxSystolic - minSystolic > (userProfile.suitableSystolicMax! - userProfile.suitableSystolicMin!) * 1.5) ||
+                   (maxDiastolic - minDiastolic > (userProfile.suitableDiastolicMax! - userProfile.suitableDiastolicMin!) * 1.5)) {
+          trend = 'fluctuating';
+        } else {
+          trend = 'stable';
+        }
+      }
+    } else if (chartType == 'Pulse' && records is List<BPRecord>) {
+      final double avg = _avg(records, (r) => r.pulseRate);
+      final double min = _min(records, (r) => r.pulseRate);
+      final double max = _max(records, (r) => r.pulseRate);
+
+      if (userProfile.suitablePulseMin != null && userProfile.suitablePulseMax != null) {
+        if (avg > userProfile.suitablePulseMax! * 1.1) {
+          trend = 'high';
+        } else if (avg < userProfile.suitablePulseMin! * 0.9) {
+          trend = 'low';
+        } else if (max - min > (userProfile.suitablePulseMax! - userProfile.suitablePulseMin!) * 1.5) {
+          trend = 'fluctuating';
+        } else {
+          trend = 'stable';
+        }
+      }
+    }
+
+    final List<String>? descriptions = descriptionsFromDb[chartType]?[trend];
+    if (descriptions != null && descriptions.isNotEmpty) {
+      return descriptions[_random.nextInt(descriptions.length)];
+    }
+    return 'No specific trend description available for $chartType with trend $trend.';
+  }
 
   String _getNlgTemplate(String key) {
     final templates = {

@@ -52,44 +52,72 @@ class IndividualHealthTrendService {
       userProfile: userProfile,
     );
 
+    final glucoseDescription = sugarReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Glucose', sugarReadings, userProfile)
+        : null;
+    final bpDescription = bpReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Blood Pressure', bpReadings, userProfile)
+        : null;
+    final pulseDescription = bpReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Pulse', bpReadings, userProfile)
+        : null;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: _pdf.PdfPageFormat.a4,
         build: (pw.Context context) {
-          return [
-            // --- PAGE 1: HEADER & SUMMARY SECTIONS (should always fit on page 1) ---
-            buildReportTitle(),
-            pw.SizedBox(height: 16),
-            buildHeader(userProfile, startDate, endDate),
-            buildSummarySection(userProfile, bpReadings, sugarReadings),
-            pw.NewPage(),
-            // --- ANALYSIS SECTION: Wrapped to prevent orphaned section title/huge gaps ---
-            buildAnalysisSection(analysisText),
+          final List<pw.Widget> widgets = [];
 
-            pw.SizedBox(height: 30),
+          // --- PAGE 1: HEADER & SUMMARY SECTIONS (should always fit on page 1) ---
+          widgets.add(buildReportTitle());
+          widgets.add(pw.SizedBox(height: 16));
+          widgets.add(buildHeader(userProfile, startDate, endDate));
+          widgets.add(buildSummarySection(userProfile, bpReadings, sugarReadings));
+          widgets.add(pw.NewPage());
 
-            // --- TREND ANALYSIS SECTION: Grouped to prevent orphaned title ---
-            pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 10),
-                  if (sugarReadings.isNotEmpty) glucoseChartWidget,
-                  if (sugarReadings.isNotEmpty) pw.SizedBox(height: 10),
-                ]
-            ),
+          // --- ANALYSIS SECTION: Wrapped to prevent orphaned section title/huge gaps ---
+          widgets.add(buildAnalysisSection(analysisText));
+          widgets.add(pw.SizedBox(height: 30));
 
-            // Other charts follow
-            if (bpReadings.isNotEmpty) bpChartWidget,
-            if (bpReadings.isNotEmpty) pw.SizedBox(height: 10),
-
-            if (bpReadings.isNotEmpty) pulseChartWidget,
-            if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
-
-            pw.NewPage(),
-            // --- DETAILED DATA SECTION: Wrapped inside its own function to keep titles with tables ---
-            buildDetailedDataSection(bpReadings, sugarReadings),
+          // --- TREND ANALYSIS SECTION: Grouped to prevent orphaned title ---
+          final List<pw.Widget> trendAnalysisChildren = [
+            pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 10),
           ];
+
+          if (sugarReadings.isNotEmpty) {
+            trendAnalysisChildren.add(glucoseChartWidget);
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (glucoseDescription != null) {
+              trendAnalysisChildren.add(pw.Text(glucoseDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 16));
+          }
+
+          if (bpReadings.isNotEmpty) {
+            trendAnalysisChildren.add(bpChartWidget);
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (bpDescription != null) {
+              trendAnalysisChildren.add(pw.Text(bpDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 16));
+          }
+
+          if (bpReadings.isNotEmpty) {
+            trendAnalysisChildren.add(pulseChartWidget);
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (pulseDescription != null) {
+              trendAnalysisChildren.add(pw.Text(pulseDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 30));
+          }
+          widgets.add(pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: trendAnalysisChildren));
+
+          widgets.add(pw.NewPage());
+          // --- DETAILED DATA SECTION: Wrapped inside its own function to keep titles with tables ---
+          widgets.add(buildDetailedDataSection(bpReadings, sugarReadings));
+          
+          return widgets;
         },
       ),
     );
@@ -117,37 +145,68 @@ class IndividualHealthTrendService {
       userProfile: userProfile,
     );
 
+    final glucoseDescription = sugarReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Glucose', sugarReadings, userProfile)
+        : null;
+    final bpDescription = bpReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Blood Pressure', bpReadings, userProfile)
+        : null;
+    final pulseDescription = bpReadings.isNotEmpty
+        ? await _analysisService.generateChartDescription('Pulse', bpReadings, userProfile)
+        : null;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: _pdf.PdfPageFormat.a4,
         build: (pw.Context context) {
-          return [
-            buildReportTitle(),
-            pw.SizedBox(height: 16),
-            buildHeader(userProfile, startDate, endDate),
-            buildSummarySection(userProfile, bpReadings, sugarReadings),
-            pw.NewPage(),
-            buildAnalysisSection(analysisText),
-            pw.SizedBox(height: 30),
-            pw.NewPage(),
-            pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 10),
-                  if (sugarReadings.isNotEmpty) buildChartImage('Glucose Trend', glucoseChartBytes),
-                  if (sugarReadings.isNotEmpty) pw.SizedBox(height: 10),
-                ]
-            ),
-            pw.NewPage(),
-            if (bpReadings.isNotEmpty) buildChartImage('Blood Pressure Trend', bpChartBytes),
-            if (bpReadings.isNotEmpty) pw.SizedBox(height: 10),
-            pw.NewPage(),
-            if (bpReadings.isNotEmpty) buildChartImage('Pulse Trend', pulseChartBytes),
-            if (bpReadings.isNotEmpty) pw.SizedBox(height: 30),
-            pw.NewPage(),
-            buildDetailedDataSection(bpReadings, sugarReadings),
+          final List<pw.Widget> widgets = [];
+
+          widgets.add(buildReportTitle());
+          widgets.add(pw.SizedBox(height: 16));
+          widgets.add(buildHeader(userProfile, startDate, endDate));
+          widgets.add(buildSummarySection(userProfile, bpReadings, sugarReadings));
+          widgets.add(pw.NewPage());
+          widgets.add(buildAnalysisSection(analysisText));
+          widgets.add(pw.SizedBox(height: 30));
+          widgets.add(pw.NewPage());
+
+          final List<pw.Widget> trendAnalysisChildren = [
+            pw.Text('Trend Analysis', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 10),
           ];
+
+          if (sugarReadings.isNotEmpty) {
+            trendAnalysisChildren.add(buildChartImage('Glucose Trend', glucoseChartBytes));
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (glucoseDescription != null) {
+              trendAnalysisChildren.add(pw.Text(glucoseDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 16));
+          }
+
+          if (bpReadings.isNotEmpty) {
+            trendAnalysisChildren.add(buildChartImage('Blood Pressure Trend', bpChartBytes));
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (bpDescription != null) {
+              trendAnalysisChildren.add(pw.Text(bpDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 16));
+          }
+
+          if (bpReadings.isNotEmpty) {
+            trendAnalysisChildren.add(buildChartImage('Pulse Trend', pulseChartBytes));
+            trendAnalysisChildren.add(pw.SizedBox(height: 10));
+            if (pulseDescription != null) {
+              trendAnalysisChildren.add(pw.Text(pulseDescription, style: const pw.TextStyle(lineSpacing: _lineSpacing)));
+            }
+            trendAnalysisChildren.add(pw.SizedBox(height: 30));
+          }
+          widgets.add(pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: trendAnalysisChildren));
+
+          widgets.add(pw.NewPage());
+          widgets.add(buildDetailedDataSection(bpReadings, sugarReadings));
+          
+          return widgets;
         },
       ),
     );
