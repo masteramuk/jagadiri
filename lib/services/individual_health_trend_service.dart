@@ -81,7 +81,7 @@ class IndividualHealthTrendService {
           widgets.add(pw.NewPage());
 
           // --- ANALYSIS SECTION: Wrapped to prevent orphaned section title/huge gaps ---
-          widgets.add(buildAnalysisSection(analysisText));
+          widgets.add(buildAnalysisSection(analysisText, fallbackFont: emojiFont));
           widgets.add(pw.SizedBox(height: 30));
 
           // --- TREND ANALYSIS SECTION: Grouped to prevent orphaned title ---
@@ -174,7 +174,7 @@ class IndividualHealthTrendService {
           widgets.add(buildHeader(userProfile, startDate, endDate));
           widgets.add(buildSummarySection(userProfile, bpReadings, sugarReadings));
           widgets.add(pw.NewPage());
-          widgets.add(buildAnalysisSection(analysisText));
+          widgets.add(buildAnalysisSection(analysisText, fallbackFont: emojiFont));
           widgets.add(pw.SizedBox(height: 30));
           widgets.add(pw.NewPage());
 
@@ -312,7 +312,7 @@ class IndividualHealthTrendService {
     );
   }
 
-  pw.Widget buildAnalysisSection(String analysisText) {
+  pw.Widget buildAnalysisSection(String analysisText, {pw.Font? fallbackFont}) {
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 20),
       padding: const pw.EdgeInsets.all(_padding),
@@ -332,7 +332,9 @@ class IndividualHealthTrendService {
           pw.Divider(height: 10, thickness: 1),
           pw.Paragraph(
             text: analysisText,
-            style: const pw.TextStyle(lineSpacing: _lineSpacing),
+            style: const pw.TextStyle(lineSpacing: _lineSpacing).copyWith(
+              fontFallback: [if (fallbackFont != null) fallbackFont],
+            ),
           ),
         ],
       ),
