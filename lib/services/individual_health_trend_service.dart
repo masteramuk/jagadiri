@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart' as _pdf;
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 import '../models/user_profile.dart';
@@ -37,6 +39,8 @@ class IndividualHealthTrendService {
     DateTime? endDate,
   }) async {
     final pdf = pw.Document();
+    final theme = await _buildPdfTheme();
+    final emojiFont = await PdfGoogleFonts.notoColorEmoji();
 
     // Preload chart widgets
     final glucoseChartWidget = buildChartImage(
@@ -64,12 +68,13 @@ class IndividualHealthTrendService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: theme,
         pageFormat: _pdf.PdfPageFormat.a4,
         build: (pw.Context context) {
           final List<pw.Widget> widgets = [];
 
           // --- PAGE 1: HEADER & SUMMARY SECTIONS (should always fit on page 1) ---
-          widgets.add(buildReportTitle());
+          widgets.add(buildReportTitle(fallbackFont: emojiFont));
           widgets.add(pw.SizedBox(height: 16));
           widgets.add(buildHeader(userProfile, startDate, endDate));
           widgets.add(buildSummarySection(userProfile, bpReadings, sugarReadings));
@@ -138,6 +143,8 @@ class IndividualHealthTrendService {
     DateTime? endDate,
   }) async {
     final pdf = pw.Document();
+    final theme = await _buildPdfTheme();
+    final emojiFont = await PdfGoogleFonts.notoColorEmoji();
 
     final analysisText = _analysisService.generateAnalysisText(
       sugarReadings: sugarReadings,
@@ -157,11 +164,12 @@ class IndividualHealthTrendService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: theme,
         pageFormat: _pdf.PdfPageFormat.a4,
         build: (pw.Context context) {
           final List<pw.Widget> widgets = [];
 
-          widgets.add(buildReportTitle());
+          widgets.add(buildReportTitle(fallbackFont: emojiFont));
           widgets.add(pw.SizedBox(height: 16));
           widgets.add(buildHeader(userProfile, startDate, endDate));
           widgets.add(buildSummarySection(userProfile, bpReadings, sugarReadings));
@@ -214,11 +222,11 @@ class IndividualHealthTrendService {
     return pdf.save();
   }
 
-  pw.Widget buildReportTitle() {
+  pw.Widget buildReportTitle({pw.Font? fallbackFont}) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Text('🩺', style: pw.TextStyle(fontSize: 40)),
+        pw.Text('🩺', style: pw.TextStyle(fontSize: 40, fontFallback: [if (fallbackFont != null) fallbackFont])),
         pw.SizedBox(height: 8),
         pw.Text(
           'Individual Health Trend Analysis Report',
@@ -456,5 +464,13 @@ class IndividualHealthTrendService {
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
     return DateFormat.jm().format(dt);
+  }
+
+  Future<pw.ThemeData> _buildPdfTheme() async {
+    return pw.ThemeData.withFont(
+      base: await PdfGoogleFonts.latoRegular(),
+      bold: await PdfGoogleFonts.latoBold(),
+      italic: await PdfGoogleFonts.latoItalic(),
+    );
   }
 }

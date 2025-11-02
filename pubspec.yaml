@@ -76,16 +76,19 @@ flutter:
   assets:
     - assets/data/
     - assets/report-icon/
-    - assets/fonts/NotoSans-Regular.ttf
-    - assets/fonts/NotoSans-Bold.ttf
-    - assets/fonts/NotoSans-Italic.ttf
+    - assets/fonts/NotoSans/NotoSans-Regular.ttf
+    - assets/fonts/NotoSans/NotoSans-Bold.ttf
+    - assets/fonts/NotoSans/NotoSans-Italic.ttf
+    - assets/fonts/NotoSans/NotoSans-Black.ttf
 
   fonts:
     - family: NotoSans
       fonts:
-        - asset: assets/fonts/NotoSans-Regular.ttf
-        - asset: assets/fonts/NotoSans-Bold.ttf
-        - asset: assets/fonts/NotoSans-Italic.ttf
+        - asset: assets/fonts/NotoSans/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans/NotoSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSans/NotoSans-Italic.ttf
+          style: italic
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
