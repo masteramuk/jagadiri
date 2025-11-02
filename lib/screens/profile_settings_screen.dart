@@ -289,52 +289,111 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  Future<void> _generateSampleData() async {
+  Future<void> _showGenerateSampleDataDialog() async {
+    final _formKey = GlobalKey<FormState>();
+    int numRecords = 10;
+    DateTime startDate = DateTime.now().subtract(const Duration(days: 30));
+    DateTime endDate = DateTime.now();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Generate Sample Data'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: ListBody(
+                children: <Widget>[
+                  TextFormField(
+                    initialValue: numRecords.toString(),
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Number of records'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the number of records';
+                      }
+                      if (int.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      numRecords = int.parse(value!);
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: DateFormat('yyyy-MM-dd').format(startDate),
+                    decoration: const InputDecoration(labelText: 'Start date (YYYY-MM-DD)'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the start date';
+                      }
+                      try {
+                        DateTime.parse(value);
+                      } catch (e) {
+                        return 'Invalid date format';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      startDate = DateTime.parse(value!);
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: DateFormat('yyyy-MM-dd').format(endDate),
+                    decoration: const InputDecoration(labelText: 'End date (YYYY-MM-DD)'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the end date';
+                      }
+                      try {
+                        DateTime.parse(value);
+                      } catch (e) {
+                        return 'Invalid date format';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      endDate = DateTime.parse(value!);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Generate'),
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  _formKey.currentState!.save();
+                  Navigator.of(context).pop();
+                  _generateSampleData(numRecords, startDate, endDate);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _generateSampleData(int numRecords, DateTime startDate, DateTime endDate) async {
     setState(() => _isProcessing = true);
     final databaseService = Provider.of<DatabaseService>(context, listen: false);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      final isMetric = _selectedMeasurementUnit == 'Metric';
-
-      List<SugarRecord> sugarRecords = [
-        SugarRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 8, minute: 5), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 5.3 : 95, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 9, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.breakfast, value: isMetric ? 7.5 : 135, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 13, minute: 10), mealTimeCategory: MealTimeCategory.before, mealType: MealType.lunch, value: isMetric ? 5.7 : 102, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 15, minute: 15), mealTimeCategory: MealTimeCategory.after, mealType: MealType.lunch, value: isMetric ? 8.6 : 155, status: SugarStatus.borderline, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 24), time: const TimeOfDay(hour: 19, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.dinner, value: isMetric ? 5.4 : 98, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 23), time: const TimeOfDay(hour: 8, minute: 15), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 6.1 : 110, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 22), time: const TimeOfDay(hour: 13, minute: 5), mealTimeCategory: MealTimeCategory.before, mealType: MealType.lunch, value: isMetric ? 5.1 : 92, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 21), time: const TimeOfDay(hour: 19, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.dinner, value: isMetric ? 9.2 : 165, status: SugarStatus.high, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 20), time: const TimeOfDay(hour: 8, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 4.9 : 88, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 19), time: const TimeOfDay(hour: 12, minute: 30), mealTimeCategory: MealTimeCategory.after, mealType: MealType.lunch, value: isMetric ? 7.9 : 142, status: SugarStatus.good, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 18), time: const TimeOfDay(hour: 9, minute: 0), mealTimeCategory: MealTimeCategory.before, mealType: MealType.breakfast, value: isMetric ? 4.2 : 75, status: SugarStatus.low, notes: 'sample_data'),
-        SugarRecord(date: DateTime(2025, 9, 17), time: const TimeOfDay(hour: 20, minute: 0), mealTimeCategory: MealTimeCategory.after, mealType: MealType.dinner, value: isMetric ? 7.2 : 130, status: SugarStatus.good, notes: 'sample_data'),
-      ];
-
-      List<BPRecord> bpRecords = [
-        BPRecord(date: DateTime(2025, 9, 26), time: const TimeOfDay(hour: 8, minute: 10), timeName: BPTimeName.morning, systolic: 118, diastolic: 78, pulseRate: 68, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 25), time: const TimeOfDay(hour: 13, minute: 15), timeName: BPTimeName.afternoon, systolic: 122, diastolic: 80, pulseRate: 72, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 24), time: const TimeOfDay(hour: 18, minute: 30), timeName: BPTimeName.evening, systolic: 125, diastolic: 82, pulseRate: 75, status: BPStatus.borderline, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 23), time: const TimeOfDay(hour: 8, minute: 20), timeName: BPTimeName.morning, systolic: 115, diastolic: 75, pulseRate: 65, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 22), time: const TimeOfDay(hour: 13, minute: 25), timeName: BPTimeName.afternoon, systolic: 135, diastolic: 88, pulseRate: 80, status: BPStatus.bad, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 21), time: const TimeOfDay(hour: 19, minute: 0), timeName: BPTimeName.evening, systolic: 128, diastolic: 85, pulseRate: 78, status: BPStatus.borderline, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 20), time: const TimeOfDay(hour: 8, minute: 5), timeName: BPTimeName.morning, systolic: 112, diastolic: 72, pulseRate: 64, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 19), time: const TimeOfDay(hour: 12, minute: 0), timeName: BPTimeName.afternoon, systolic: 120, diastolic: 79, pulseRate: 70, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 18), time: const TimeOfDay(hour: 9, minute: 30), timeName: BPTimeName.morning, systolic: 132, diastolic: 86, pulseRate: 82, status: BPStatus.bad, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 17), time: const TimeOfDay(hour: 20, minute: 15), timeName: BPTimeName.evening, systolic: 124, diastolic: 81, pulseRate: 73, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 16), time: const TimeOfDay(hour: 14, minute: 0), timeName: BPTimeName.afternoon, systolic: 119, diastolic: 77, pulseRate: 69, status: BPStatus.normal, notes: 'sample_data'),
-        BPRecord(date: DateTime(2025, 9, 15), time: const TimeOfDay(hour: 7, minute: 45), timeName: BPTimeName.morning, systolic: 121, diastolic: 76, pulseRate: 66, status: BPStatus.normal, notes: 'sample_data'),
-      ];
-
-      for (var record in sugarRecords) {
-        await databaseService.insertSugarRecord(record);
-      }
-      for (var record in bpRecords) {
-        await databaseService.insertBPRecord(record);
-      }
-
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('12 sugar and 12 BP records added successfully!')));
+      await databaseService.generateAndInsertDummyData(numRecords, startDate, endDate);
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('$numRecords sample records added successfully!')));
     } catch (e) {
       scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error generating data: $e')));
     } finally {
@@ -560,7 +619,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             ElevatedButton.icon(
-                              onPressed: _generateSampleData,
+                              onPressed: () => _showGenerateSampleDataDialog(),
                               icon: const Icon(Icons.add_chart),
                               label: const Text('Generate Data'),
                             ),

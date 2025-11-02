@@ -1,4 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:jagadiri/models/sugar_record.dart';
+import 'package:jagadiri/models/bp_record.dart';
 import 'package:jagadiri/models/bp_record.dart';
 import 'package:jagadiri/models/sugar_record.dart';
 import 'package:jagadiri/models/sugar_reference.dart';
@@ -7,6 +11,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+  // Service to interact with the local database.
 class DatabaseService {
   static Database? _database;
   static final DatabaseService _instance = DatabaseService._internal();
@@ -15,7 +20,7 @@ class DatabaseService {
   DatabaseService._internal();
 
   // Define the database version
-  static const int _dbVersion = 12;
+  static const int _dbVersion = 13;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -49,6 +54,7 @@ class DatabaseService {
     await _createAllTables(db);
     await seedSugarReference(db);
     await seedChartDescriptions(db);
+    await seedNlgTemplates(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -99,6 +105,10 @@ class DatabaseService {
         await _createTable(db, 'chart_descriptions', _chartDescriptionSchema);
         await seedChartDescriptions(db);
         break;
+      case 13:
+        await _createTable(db, 'nlg_templates', _nlgTemplatesSchema);
+        await seedNlgTemplates(db);
+        break;
       default:
         debugPrint('No migration found for version $version');
         break;
@@ -112,6 +122,7 @@ class DatabaseService {
     await _createTable(db, 'user_profile', _userProfileSchema);
     await _createTable(db, 'sugar_reference', _sugarReferenceSchema);
     await _createTable(db, 'chart_descriptions', _chartDescriptionSchema);
+    await _createTable(db, 'nlg_templates', _nlgTemplatesSchema);
   }
 
   // === Schema Definitions ===
@@ -159,6 +170,12 @@ class DatabaseService {
     chart_type TEXT NOT NULL,
     trend TEXT NOT NULL,
     description TEXT NOT NULL
+  ''';
+
+  static const String _nlgTemplatesSchema = '''
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL,
+    template TEXT NOT NULL
   ''';
 
   static const String _sugarReferenceSchemaV7 = '''
@@ -493,7 +510,70 @@ class DatabaseService {
     return null;
   }
 
-  // === Chart Description Operations ===
+  Future<void> seedNlgTemplates(Database db) async {
+    final batch = db.batch();
+    final templates = {
+      'glucose_high': [
+        "Monitoring carb intake might help prevent these spikes. 📈",
+        "Remember to check your levels after meals to understand their impact. 🤔",
+        "Are these spikes related to specific foods or stress? Noting it down can help.",
+      ],
+      'glucose_low': [
+        "Always have a quick-sugar source handy. Your safety is a priority! 🍬",
+        "Be careful not to overtreat a low; recheck your levels in 15 minutes.",
+        "Feeling shaky or dizzy? It might be a sign of a hypo. Please be safe.",
+      ],
+      'bp_unstable': [
+        "This variability can be taxing. Aiming for consistency in diet and routine can help. ⚖️",
+        "Factors like salt intake, stress, or even caffeine can cause these swings.",
+        "Let's try to create a more stable environment for your heart.",
+      ],
+      'pulse_low': [
+        "For athletes, a lower pulse can be a sign of great fitness! But if you feel dizzy, it's worth a check-up. 🏃",
+        "Certain medications can lower heart rate. It's good to be aware.",
+      ],
+      'pulse_high': [
+        "Stress, caffeine, or dehydration can sometimes elevate your pulse. ☕",
+        "Notice if your heart races during rest; it could be a signal to slow down and breathe.",
+      ],
+      'glucose_trend_up': [
+        "Let's review your diet and activity to see what might be causing this upward trend. Small changes can make a big difference. 💪",
+        "An upward trend is a call to action. You have the power to steer it back down!",
+      ],
+      'glucose_trend_down': [
+        "Whatever you're doing, it's working! Keep up the fantastic effort. 🎉",
+        "This downward trend is a huge win for your long-term health. Celebrate it!",
+      ],
+      'glucose_stable': [
+        "Consistency is key in diabetes management, and you are nailing it! 👏",
+        "A stable trend is a sign of a balanced and healthy routine. Well done!",
+      ],
+      'glucose_fluctuation': [
+        "Smoothing out these peaks and valleys can lead to better energy and health. Consider consistent carb timing. 🍽️",
+        "Big swings can be tiring. Let's aim for a gentler wave.",
+      ],
+      't1_diabetic': [
+        "Your diligence with insulin and carb counting is the cornerstone of your health.",
+        "Navigating the T1 journey requires strength. You're doing great.",
+      ],
+      't2_diabetic': [
+        "Every healthy meal and every step you take is a step towards reversing insulin resistance. Keep going! 🚶‍♀️",
+        "Managing T2 is a marathon, not a sprint. Your consistent efforts are what count.",
+      ],
+    };
+
+    templates.forEach((key, templates) {
+      for (var template in templates) {
+        batch.insert('nlg_templates', {
+          'key': key,
+          'template': template,
+        });
+      }
+    });
+
+    await batch.commit(noResult: true);
+    debugPrint('NLG templates table seeded.');
+  }
 
   Future<void> seedChartDescriptions(Database db) async {
     final batch = db.batch();
@@ -761,4 +841,100 @@ class DatabaseService {
 
     return chartDescriptions;
   }
-}
+
+  Future<Map<String, List<String>>> getNlgTemplates() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('nlg_templates');
+
+    final Map<String, List<String>> nlgTemplates = {};
+
+    for (var map in maps) {
+      final key = map['key'] as String;
+      final template = map['template'] as String;
+
+      if (!nlgTemplates.containsKey(key)) {
+        nlgTemplates[key] = [];
+      }
+      nlgTemplates[key]!.add(template);
+    }
+
+    return nlgTemplates;
+  }
+
+  Future<void> generateAndInsertDummyData(int numRecords, DateTime startDate, DateTime endDate) async {
+
+        final db = await database;
+
+        final Random random = Random();
+
+    
+
+        for (int i = 0; i < numRecords; i++) {
+
+          // Generate a random date within the date range
+
+          final randomDay = random.nextInt(endDate.difference(startDate).inDays + 1);
+
+          final randomDate = startDate.add(Duration(days: randomDay));
+
+    
+
+          // Generate a random time
+
+          final randomTime = TimeOfDay(hour: random.nextInt(24), minute: random.nextInt(60));
+
+    
+
+          // Generate a random sugar record
+
+          final sugarRecord = SugarRecord(
+
+            date: randomDate,
+
+            time: randomTime,
+
+            mealTimeCategory: MealTimeCategory.values[random.nextInt(MealTimeCategory.values.length)],
+
+            mealType: MealType.values[random.nextInt(MealType.values.length)],
+
+            value: 70 + random.nextDouble() * 130, // Random value between 70 and 200
+
+            status: SugarStatus.good,
+
+            notes: 'sample_data',
+
+          );
+
+          await db.insert('sugar_records', sugarRecord.toDbMap());
+
+    
+
+          // Generate a random BP record
+
+          final bpRecord = BPRecord(
+
+            date: randomDate,
+
+            time: randomTime,
+
+            timeName: BPTimeName.values[random.nextInt(BPTimeName.values.length)],
+
+            systolic: 100 + random.nextInt(80), // Random value between 100 and 180
+
+            diastolic: 60 + random.nextInt(40), // Random value between 60 and 100
+
+            pulseRate: 60 + random.nextInt(40), // Random value between 60 and 100
+
+            status: BPStatus.normal,
+
+            notes: 'sample_data',
+
+          );
+
+          await db.insert('bp_records', bpRecord.toDbMap());
+
+        }
+
+      }
+
+    }

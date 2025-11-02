@@ -113,7 +113,7 @@ class IndividualHealthTrendGeneratedReportViewerScreen extends StatefulWidget {
 
 class _IndividualHealthTrendGeneratedReportViewerScreenState
     extends State<IndividualHealthTrendGeneratedReportViewerScreen> {
-  late final String _analysisText;
+  late String _analysisText = '';
 
   final _scrollController = ScrollController();
   final _summaryKey = GlobalKey();
@@ -144,12 +144,7 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
   void initState() {
     super.initState();
     _loadChartDescriptions();
-    final analysisService = HealthAnalysisService();
-    _analysisText = analysisService.generateAnalysisText(
-      sugarReadings: widget.sugarRecords,
-      bpReadings: widget.bpRecords,
-      userProfile: widget.userProfile,
-    );
+    _generateAnalysis();
 
     // Pre-build charts
     if (widget.sugarRecords.isNotEmpty) {
@@ -171,6 +166,18 @@ class _IndividualHealthTrendGeneratedReportViewerScreenState
             widget.bpRecords),
       );
     }
+  }
+
+  Future<void> _generateAnalysis() async {
+    final analysisService = HealthAnalysisService();
+    final analysisText = await analysisService.generateAnalysisText(
+      sugarReadings: widget.sugarRecords,
+      bpReadings: widget.bpRecords,
+      userProfile: widget.userProfile,
+    );
+    setState(() {
+      _analysisText = analysisText;
+    });
   }
 
   @override

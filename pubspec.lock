@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "4.0.7"
   args:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: args
       sha256: d0481093c50b1da8910eb0bb301626d4d8eb7284aa739614d2b394ee09e3ea04
@@ -85,10 +85,10 @@ packages:
     dependency: transitive
     description:
       name: cross_file
-      sha256: "7caf6a750a0c04effbb52a676dce9a4a592e10ad35c34d6d2d0e4811160d5670"
+      sha256: "942a4791cd385a68ccb3b32c71c427aba508a1bb949b86dff2adbe4049f16239"
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.4+2"
+    version: "0.3.5"
   crypto:
     dependency: transitive
     description:
@@ -186,10 +186,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
-      sha256: b0694b7fb1689b0e6cc193b3f1fcac6423c4f93c74fb20b806c6b6f196db0c31
+      sha256: "306f0596590e077338312f38837f595c04f28d6cdeeac392d3d74df2f0003687"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.30"
+    version: "2.0.32"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -404,18 +404,18 @@ packages:
     dependency: transitive
     description:
       name: path_provider_android
-      sha256: "993381400e94d18469750e5b9dcb8206f15bc09f9da86b9e44a9b0092a0066db"
+      sha256: e122c5ea805bb6773bb12ce667611265980940145be920cd09a4b0ec0285cb16
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.18"
+    version: "2.2.20"
   path_provider_foundation:
     dependency: transitive
     description:
       name: path_provider_foundation
-      sha256: "16eef174aacb07e09c351502740fa6254c165757638eba1e9116b0a781201bbd"
+      sha256: efaec349ddfc181528345c56f8eda9d6cccd71c177511b132c6a0ddaefaa2738
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.2"
+    version: "2.4.3"
   path_provider_linux:
     dependency: transitive
     description:
@@ -604,18 +604,18 @@ packages:
     dependency: transitive
     description:
       name: shared_preferences_android
-      sha256: a2608114b1ffdcbc9c120eb71a0e207c71da56202852d4aab8a5e30a82269e74
+      sha256: "34266009473bf71d748912da4bf62d439185226c03e01e2d9687bc65bbfcb713"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.12"
+    version: "2.4.15"
   shared_preferences_foundation:
     dependency: transitive
     description:
       name: shared_preferences_foundation
-      sha256: "6a52cfcdaeac77cad8c97b539ff688ccfc458c007b4db12be584fbe5c0e49e03"
+      sha256: "1c33a907142607c40a7542768ec9badfd16293bac51da3a4482623d15845f88b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.4"
+    version: "2.5.5"
   shared_preferences_linux:
     dependency: transitive
     description:
@@ -697,10 +697,10 @@ packages:
     dependency: "direct main"
     description:
       name: sqflite_common_ffi_web
-      sha256: "33495e9172c958d907c48fd43fbea0b9c0a2ec2e36a548ebd07672fde61b6497"
+      sha256: "793c1ff5b0c95ac618e7731e209db99e96abff59ad3432a3c91bd2b1454a00d5"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1+1"
+    version: "1.0.1+2"
   sqflite_darwin:
     dependency: transitive
     description:
@@ -721,10 +721,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: f393d92c71bdcc118d6203d07c991b9be0f84b1a6f89dd4f7eed348131329924
+      sha256: "3145bd74dcdb4fd6f5c6dda4d4e4490a8087d7f286a14dee5d37087290f0f8a2"
       url: "https://pub.dev"
     source: hosted
-    version: "2.9.0"
+    version: "2.9.4"
   stack_trace:
     dependency: transitive
     description:
@@ -761,34 +761,34 @@ packages:
     dependency: transitive
     description:
       name: syncfusion_flutter_core
-      sha256: e8e351522b7c3442609e04f1613f29b7917147bb3de41dbd3c1ec4169cf1888d
+      sha256: a24e9ec04e03c2c14b7b41b1afe60e455adef09b244ab4c425ce6c5b8f58c9ce
       url: "https://pub.dev"
     source: hosted
-    version: "31.1.20"
+    version: "31.2.4"
   syncfusion_flutter_pdf:
     dependency: "direct main"
     description:
       name: syncfusion_flutter_pdf
-      sha256: "92d535e5b2bb7336e4457756aff01cc011f04fa924255c807b898611fcb2d1e4"
+      sha256: "8d98edae5c5d3aba2125de49bd37882da124409021d4f3de5730eb93d8247a81"
       url: "https://pub.dev"
     source: hosted
-    version: "31.1.20"
+    version: "31.2.4"
   syncfusion_flutter_xlsio:
     dependency: "direct main"
     description:
       name: syncfusion_flutter_xlsio
-      sha256: "51ee2929100875d238e46b90e0772dba8c7310f83ac1b3d142b48c6b2e0f8f47"
+      sha256: e90397266a723443536c0bdea5df5bc41fc698417d1b0aad2e39606106287c84
       url: "https://pub.dev"
     source: hosted
-    version: "31.1.20"
+    version: "31.2.4"
   syncfusion_officecore:
     dependency: transitive
     description:
       name: syncfusion_officecore
-      sha256: f11fcc09c89bd59f614d60b71da6bcbf2a1151d594b985845b835d5ebf47460b
+      sha256: f2b69c083b3e045cf43b55bc2c1d7191ebc1817ee79c4fdcad41f2cad47f31a5
       url: "https://pub.dev"
     source: hosted
-    version: "31.1.20"
+    version: "31.2.4"
   synchronized:
     dependency: transitive
     description:
@@ -857,10 +857,10 @@ packages:
     dependency: transitive
     description:
       name: win32
-      sha256: "66814138c3562338d05613a6e368ed8cfb237ad6d64a9e9334be3f309acfca03"
+      sha256: d7cb55e04cd34096cd3a79b3330245f54cb96a370a1c27adb3c84b917de8b08e
       url: "https://pub.dev"
     source: hosted
-    version: "5.14.0"
+    version: "5.15.0"
   xdg_directories:
     dependency: transitive
     description:

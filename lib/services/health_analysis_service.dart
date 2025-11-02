@@ -12,11 +12,11 @@ class HealthAnalysisService {
   final DatabaseService _dbService = DatabaseService();
   /// Generates comprehensive health analysis text for any report.
   /// Reusable across all 5 report types.
-  String generateAnalysisText({
+  Future<String> generateAnalysisText({
     required List<SugarRecord> sugarReadings,
     required List<BPRecord> bpReadings,
     required UserProfile userProfile,
-  }) {
+  }) async {
     if (sugarReadings.isEmpty && bpReadings.isEmpty) {
       return "No health data is available for analysis. Please start by recording your glucose or blood pressure readings.";
     }
@@ -26,10 +26,10 @@ class HealthAnalysisService {
     summary.writeln();
 
     // Generate and append each section
-    summary.write(_generateGlucoseAnalysis(sugarReadings, userProfile));
-    summary.write(_generateBPAnalysis(bpReadings));
-    summary.write(_generatePulseAnalysis(bpReadings));
-    summary.write(_generateTrendAndFluctuationAnalysis(sugarReadings, bpReadings, userProfile));
+    summary.write(await _generateGlucoseAnalysis(sugarReadings, userProfile));
+    summary.write(await _generateBPAnalysis(bpReadings));
+    summary.write(await _generatePulseAnalysis(bpReadings));
+    summary.write(await _generateTrendAndFluctuationAnalysis(sugarReadings, bpReadings, userProfile));
     summary.writeln();
 
     summary.writeln("💡 Wellness Tips:");
@@ -40,7 +40,7 @@ class HealthAnalysisService {
 
   // --- Private Analysis Methods ---
 
-  String _generateGlucoseAnalysis(List<SugarRecord> _sugarReadings, UserProfile _userProfile) {
+  Future<String> _generateGlucoseAnalysis(List<SugarRecord> _sugarReadings, UserProfile _userProfile) async {
     if (_sugarReadings.isEmpty) return "";
     final buffer = StringBuffer();
 
@@ -68,24 +68,24 @@ class HealthAnalysisService {
     final highEvents = _sugarReadings.where((r) => r.value > 180).length;
     final lowEvents = _sugarReadings.where((r) => r.value < 70).length;
     if (highEvents > 0) {
-      buffer.writeln("- You had $highEvents instance(s) of high glucose (>180 mg/dL). ${_getNlgTemplate('glucose_high')}");
+      buffer.writeln("- You had $highEvents instance(s) of high glucose (>180 mg/dL). ${await _getNlgTemplate('glucose_high')}");
     }
     if (lowEvents > 0) {
-      buffer.writeln("- You experienced $lowEvents episode(s) of low glucose (<70 mg/dL). ${_getNlgTemplate('glucose_low')}");
+      buffer.writeln("- You experienced $lowEvents episode(s) of low glucose (<70 mg/dL). ${await _getNlgTemplate('glucose_low')}");
     }
 
     buffer.writeln();
     return buffer.toString();
   }
 
-  String _generateBPAnalysis(List<BPRecord> _bpReadings) {
+  Future<String> _generateBPAnalysis(List<BPRecord> _bpReadings) async {
     if (_bpReadings.isEmpty) return "";
     final buffer = StringBuffer();
 
     final avgSystolic = _bpReadings.map((r) => r.systolic).average.round();
     final avgDiastolic = _bpReadings.map((r) => r.diastolic).average.round();
 
-    buffer.writeln("Blood Pressure Insights:");
+    buffer.writeln("❤ Blood Pressure Insights:");
     buffer.writeln("Your average BP is **$avgSystolic/$avgDiastolic mmHg**.");
 
     // AHA Classification
@@ -112,14 +112,14 @@ class HealthAnalysisService {
     }).length;
 
     if (unstableDays > 0) {
-      buffer.writeln("- On $unstableDays day(s), your systolic BP varied by more than 20 mmHg. ${_getNlgTemplate('bp_unstable')}");
+      buffer.writeln("- On $unstableDays day(s), your systolic BP varied by more than 20 mmHg. ${await _getNlgTemplate('bp_unstable')}");
     }
 
     buffer.writeln();
     return buffer.toString();
   }
 
-  String _generatePulseAnalysis(List<BPRecord> _bpReadings) {
+  Future<String> _generatePulseAnalysis(List<BPRecord> _bpReadings) async {
     if (_bpReadings.isEmpty) return "";
     final buffer = StringBuffer();
     final avgPulse = _bpReadings.map((r) => r.pulseRate).average.round();
@@ -128,9 +128,9 @@ class HealthAnalysisService {
     buffer.writeln("Your average resting pulse is **$avgPulse bpm**.");
 
     if (avgPulse < 60) {
-      buffer.writeln("- This may indicate bradycardia (a slow heart rate). ${_getNlgTemplate('pulse_low')}");
+      buffer.writeln("- This may indicate bradycardia (a slow heart rate). ${await _getNlgTemplate('pulse_low')}");
     } else if (avgPulse > 100) {
-      buffer.writeln("- This may indicate tachycardia (a fast heart rate). ${_getNlgTemplate('pulse_high')}");
+      buffer.writeln("- This may indicate tachycardia (a fast heart rate). ${await _getNlgTemplate('pulse_high')}");
     } else {
       buffer.writeln("- Your pulse is in the normal range. Keep up the healthy habits! 👍");
     }
@@ -138,7 +138,7 @@ class HealthAnalysisService {
     return buffer.toString();
   }
 
-  String _generateTrendAndFluctuationAnalysis(List<SugarRecord> _sugarReadings, List<BPRecord> _bpReadings, UserProfile _userProfile) {
+  Future<String> _generateTrendAndFluctuationAnalysis(List<SugarRecord> _sugarReadings, List<BPRecord> _bpReadings, UserProfile _userProfile) async {
     if (_sugarReadings.isEmpty) return "";
 
     final buffer = StringBuffer();
@@ -149,11 +149,11 @@ class HealthAnalysisService {
       final firstHalfAvg = _sugarReadings.sublist(0, _sugarReadings.length ~/ 2).map((r) => r.value).average;
       final secondHalfAvg = _sugarReadings.sublist(_sugarReadings.length ~/ 2).map((r) => r.value).average;
       if (secondHalfAvg > firstHalfAvg * 1.1) {
-        buffer.writeln("- Your glucose levels appear to be on a **rising trend**. ${_getNlgTemplate('glucose_trend_up')}");
+        buffer.writeln("- Your glucose levels appear to be on a **rising trend**. ${await _getNlgTemplate('glucose_trend_up')}");
       } else if (secondHalfAvg < firstHalfAvg * 0.9) {
-        buffer.writeln("- Good news! Your glucose levels show a **falling trend**. ${_getNlgTemplate('glucose_trend_down')}");
+        buffer.writeln("- Good news! Your glucose levels show a **falling trend**. ${await _getNlgTemplate('glucose_trend_down')}");
       } else {
-        buffer.writeln("- Your glucose levels are relatively **stable**. ${_getNlgTemplate('glucose_stable')}");
+        buffer.writeln("- Your glucose levels are relatively **stable**. ${await _getNlgTemplate('glucose_stable')}");
       }
     }
 
@@ -167,14 +167,14 @@ class HealthAnalysisService {
     }).length;
 
     if (highFluctuationDays > 0) {
-      buffer.writeln("- We noticed significant glucose swings (>60 mg/dL) on $highFluctuationDays day(s). ${_getNlgTemplate('glucose_fluctuation')}");
+      buffer.writeln("- We noticed significant glucose swings (>60 mg/dL) on $highFluctuationDays day(s). ${await _getNlgTemplate('glucose_fluctuation')}");
     }
 
     // Personalization
     if (_userProfile.sugarScenario == 'Type 1 Diabetic') {
-      buffer.writeln("- As a Type 1 Diabetic, precise insulin timing is key. ${_getNlgTemplate('t1_diabetic')}");
+      buffer.writeln("- As a Type 1 Diabetic, precise insulin timing is key. ${await _getNlgTemplate('t1_diabetic')}");
     } else if (_userProfile.sugarScenario == 'Type 2 Diabetic') {
-      buffer.writeln("- For Type 2 Diabetes, combining diet and exercise is a powerful tool. ${_getNlgTemplate('t2_diabetic')}");
+      buffer.writeln("- For Type 2 Diabetes, combining diet and exercise is a powerful tool. ${await _getNlgTemplate('t2_diabetic')}");
     }
 
     return buffer.toString();
@@ -280,56 +280,8 @@ class HealthAnalysisService {
     return 'No specific trend description available for $chartType with trend $trend.';
   }
 
-  String _getNlgTemplate(String key) {
-    final templates = {
-      'glucose_high': [
-        "Monitoring carb intake might help prevent these spikes.",
-        "Remember to check your levels after meals to understand their impact.",
-        "Are these spikes related to specific foods or stress? Noting it down can help.",
-      ],
-      'glucose_low': [
-        "Always have a quick-sugar source handy. Your safety is a priority!",
-        "Be careful not to overtreat a low; recheck your levels in 15 minutes.",
-        "Feeling shaky or dizzy? It might be a sign of a hypo. Please be safe.",
-      ],
-      'bp_unstable': [
-        "This variability can be taxing. Aiming for consistency in diet and routine can help.",
-        "Factors like salt intake, stress, or even caffeine can cause these swings.",
-        "Let's try to create a more stable environment for your heart.",
-      ],
-      'pulse_low': [
-        "For athletes, a lower pulse can be a sign of great fitness! But if you feel dizzy, it's worth a check-up.",
-        "Certain medications can lower heart rate. It's good to be aware.",
-      ],
-      'pulse_high': [
-        "Stress, caffeine, or dehydration can sometimes elevate your pulse.",
-        "Notice if your heart races during rest; it could be a signal to slow down and breathe.",
-      ],
-      'glucose_trend_up': [
-        "Let's review your diet and activity to see what might be causing this upward trend. Small changes can make a big difference.",
-        "An upward trend is a call to action. You have the power to steer it back down!",
-      ],
-      'glucose_trend_down': [
-        "Whatever you're doing, it's working! Keep up the fantastic effort.",
-        "This downward trend is a huge win for your long-term health. Celebrate it!",
-      ],
-      'glucose_stable': [
-        "Consistency is key in diabetes management, and you are nailing it!",
-        "A stable trend is a sign of a balanced and healthy routine. Well done!",
-      ],
-      'glucose_fluctuation': [
-        "Smoothing out these peaks and valleys can lead to better energy and health. Consider consistent carb timing.",
-        "Big swings can be tiring. Let's aim for a gentler wave.",
-      ],
-      't1_diabetic': [
-        "Your diligence with insulin and carb counting is the cornerstone of your health.",
-        "Navigating the T1 journey requires strength. You're doing great.",
-      ],
-      't2_diabetic': [
-        "Every healthy meal and every step you take is a step towards reversing insulin resistance. Keep going!",
-        "Managing T2 is a marathon, not a sprint. Your consistent efforts are what count.",
-      ],
-    };
+  Future<String> _getNlgTemplate(String key) async {
+    final templates = await _dbService.getNlgTemplates();
 
     if (templates.containsKey(key)) {
       final options = templates[key]!;

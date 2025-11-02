@@ -49,8 +49,7 @@ class IndividualHealthTrendService {
         'Blood Pressure Trend', bpChartBytes);
     final pulseChartWidget = buildChartImage(
         'Pulse Trend', pulseChartBytes);
-
-    final analysisText = _analysisService.generateAnalysisText(
+    final analysisText = await _analysisService.generateAnalysisText(
       sugarReadings: sugarReadings,
       bpReadings: bpReadings,
       userProfile: userProfile,
@@ -116,10 +115,7 @@ class IndividualHealthTrendService {
             }
             trendAnalysisChildren.add(pw.SizedBox(height: 30));
           }
-          widgets.add(pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: trendAnalysisChildren));
-
-          widgets.add(pw.NewPage());
-          // --- DETAILED DATA SECTION: Wrapped inside its own function to keep titles with tables ---
+          widgets.addAll(trendAnalysisChildren);
           widgets.add(buildDetailedDataSection(bpReadings, sugarReadings));
           
           return widgets;
@@ -146,7 +142,7 @@ class IndividualHealthTrendService {
     final theme = await _buildPdfTheme();
     final emojiFont = await PdfGoogleFonts.notoColorEmoji();
 
-    final analysisText = _analysisService.generateAnalysisText(
+    final analysisText = await _analysisService.generateAnalysisText(
       sugarReadings: sugarReadings,
       bpReadings: bpReadings,
       userProfile: userProfile,
@@ -209,7 +205,7 @@ class IndividualHealthTrendService {
             }
             trendAnalysisChildren.add(pw.SizedBox(height: 30));
           }
-          widgets.add(pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: trendAnalysisChildren));
+          widgets.addAll(trendAnalysisChildren);
 
           widgets.add(pw.NewPage());
           widgets.add(buildDetailedDataSection(bpReadings, sugarReadings));
