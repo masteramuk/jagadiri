@@ -85,13 +85,13 @@ class HealthAnalysisService {
     final avgSystolic = _bpReadings.map((r) => r.systolic).average.round();
     final avgDiastolic = _bpReadings.map((r) => r.diastolic).average.round();
 
-    buffer.writeln("❤️ Blood Pressure Insights:");
+    buffer.writeln("Blood Pressure Insights:");
     buffer.writeln("Your average BP is **$avgSystolic/$avgDiastolic mmHg**.");
 
     // AHA Classification
     buffer.write("This falls into the ");
     if (avgSystolic < 120 && avgDiastolic < 80) {
-      buffer.writeln("**Normal** category. Great job! ✅");
+      buffer.writeln("**Normal** category. Great job!");
     } else if (avgSystolic < 130 && avgDiastolic < 80) {
       buffer.writeln("**Elevated** category.");
     } else if (avgSystolic < 140 || avgDiastolic < 90) {
@@ -99,7 +99,7 @@ class HealthAnalysisService {
     } else if (avgSystolic < 180 || avgDiastolic < 120) {
       buffer.writeln("**Hypertension Stage 2** category.");
     } else {
-      buffer.writeln("**Hypertensive Crisis** category. Please consult a doctor immediately. 🚨");
+      buffer.writeln("**Hypertensive Crisis** category. Please consult a doctor immediately.");
     }
 
     // Instability check
@@ -283,42 +283,42 @@ class HealthAnalysisService {
   String _getNlgTemplate(String key) {
     final templates = {
       'glucose_high': [
-        "Monitoring carb intake might help prevent these spikes. 📈",
-        "Remember to check your levels after meals to understand their impact. 🤔",
+        "Monitoring carb intake might help prevent these spikes.",
+        "Remember to check your levels after meals to understand their impact.",
         "Are these spikes related to specific foods or stress? Noting it down can help.",
       ],
       'glucose_low': [
-        "Always have a quick-sugar source handy. Your safety is a priority! 🍬",
+        "Always have a quick-sugar source handy. Your safety is a priority!",
         "Be careful not to overtreat a low; recheck your levels in 15 minutes.",
         "Feeling shaky or dizzy? It might be a sign of a hypo. Please be safe.",
       ],
       'bp_unstable': [
-        "This variability can be taxing. Aiming for consistency in diet and routine can help. ⚖️",
+        "This variability can be taxing. Aiming for consistency in diet and routine can help.",
         "Factors like salt intake, stress, or even caffeine can cause these swings.",
         "Let's try to create a more stable environment for your heart.",
       ],
       'pulse_low': [
-        "For athletes, a lower pulse can be a sign of great fitness! But if you feel dizzy, it's worth a check-up. 🏃",
+        "For athletes, a lower pulse can be a sign of great fitness! But if you feel dizzy, it's worth a check-up.",
         "Certain medications can lower heart rate. It's good to be aware.",
       ],
       'pulse_high': [
-        "Stress, caffeine, or dehydration can sometimes elevate your pulse. ☕",
+        "Stress, caffeine, or dehydration can sometimes elevate your pulse.",
         "Notice if your heart races during rest; it could be a signal to slow down and breathe.",
       ],
       'glucose_trend_up': [
-        "Let's review your diet and activity to see what might be causing this upward trend. Small changes can make a big difference. 💪",
+        "Let's review your diet and activity to see what might be causing this upward trend. Small changes can make a big difference.",
         "An upward trend is a call to action. You have the power to steer it back down!",
       ],
       'glucose_trend_down': [
-        "Whatever you're doing, it's working! Keep up the fantastic effort. 🎉",
+        "Whatever you're doing, it's working! Keep up the fantastic effort.",
         "This downward trend is a huge win for your long-term health. Celebrate it!",
       ],
       'glucose_stable': [
-        "Consistency is key in diabetes management, and you are nailing it! 👏",
+        "Consistency is key in diabetes management, and you are nailing it!",
         "A stable trend is a sign of a balanced and healthy routine. Well done!",
       ],
       'glucose_fluctuation': [
-        "Smoothing out these peaks and valleys can lead to better energy and health. Consider consistent carb timing. 🍽️",
+        "Smoothing out these peaks and valleys can lead to better energy and health. Consider consistent carb timing.",
         "Big swings can be tiring. Let's aim for a gentler wave.",
       ],
       't1_diabetic': [
@@ -326,7 +326,7 @@ class HealthAnalysisService {
         "Navigating the T1 journey requires strength. You're doing great.",
       ],
       't2_diabetic': [
-        "Every healthy meal and every step you take is a step towards reversing insulin resistance. Keep going! 🚶‍♀️",
+        "Every healthy meal and every step you take is a step towards reversing insulin resistance. Keep going!",
         "Managing T2 is a marathon, not a sprint. Your consistent efforts are what count.",
       ],
     };
