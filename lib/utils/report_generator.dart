@@ -5,7 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart'; // For chart data, though PDF will embed images
 
@@ -126,7 +126,7 @@ class ReportGenerator {
   }
 
   Future<List<int>?> generateExcelReport(ReportType type, DateTime startDate, DateTime endDate) async {
-    final excel = Excel.createExcel();
+    final xlsio.Workbook workbook = xlsio.Workbook();
 
     // Fetch and transform data using the new methods
     final sugarRecords = await _fetchAndTransformSugarRecords(startDate, endDate);
@@ -135,23 +135,23 @@ class ReportGenerator {
 
     switch (type) {
       case ReportType.individualTrends:
-        _buildIndividualTrendsExcel(excel, sugarRecords, bpRecords, startDate, endDate, userProfile);
+        _buildIndividualTrendsExcel(workbook, sugarRecords, bpRecords, startDate, endDate, userProfile);
         break;
       case ReportType.comparisonSummary:
-        _buildComparisonSummaryExcel(excel, sugarRecords, bpRecords, startDate, endDate, userProfile);
+        _buildComparisonSummaryExcel(workbook, sugarRecords, bpRecords, startDate, endDate, userProfile);
         break;
       case ReportType.riskAssessment:
-        _buildRiskAssessmentExcel(excel, sugarRecords, bpRecords, startDate, endDate, userProfile);
+        _buildRiskAssessmentExcel(workbook, sugarRecords, bpRecords, startDate, endDate, userProfile);
         break;
       case ReportType.correlation:
-        _buildCorrelationExcel(excel, sugarRecords, bpRecords, startDate, endDate, userProfile);
+        _buildCorrelationExcel(workbook, sugarRecords, bpRecords, startDate, endDate, userProfile);
         break;
       case ReportType.bodyComposition:
-        _buildBodyCompositionExcel(excel, userProfile, startDate, endDate);
+        _buildBodyCompositionExcel(workbook, userProfile, startDate, endDate);
         break;
     }
 
-    return _encodeExcelDocument(excel);
+    return _encodeExcelDocument(workbook);
   }
 
   // --- PDF Report Builders (using Report-specific models) ---
@@ -319,7 +319,7 @@ class ReportGenerator {
   // --- Excel Report Builders (using Report-specific models) ---
 
   void _buildIndividualTrendsExcel(
-      Excel excel,
+      xlsio.Workbook workbook,
       List<ReportSugarRecord> sugarRecords,
       List<ReportBPRecord> bpRecords,
       DateTime startDate,
@@ -327,41 +327,44 @@ class ReportGenerator {
       ReportUserProfile? userProfile,
       ) {
     // Sheet 1: Raw Daily Logs
-    Sheet sheet = excel['Raw Daily Logs'];
-    sheet.appendRow([
-      'Date', 'Time', 'Metric', 'Value', 'Unit', 'Context/Pulse', 'Systolic', 'Diastolic'
-    ]);
+    final xlsio.Worksheet sheet = workbook.worksheets[0];
+    sheet.name = 'Raw Daily Logs';
+    sheet.getRangeByName('A1').setText('Date');
+    sheet.getRangeByName('B1').setText('Time');
+    sheet.getRangeByName('C1').setText('Metric');
+    sheet.getRangeByName('D1').setText('Value');
+    sheet.getRangeByName('E1').setText('Unit');
+    sheet.getRangeByName('F1').setText('Context/Pulse');
+    sheet.getRangeByName('G1').setText('Systolic');
+    sheet.getRangeByName('H1').setText('Diastolic');
 
+    int i = 2;
     for (var record in sugarRecords) {
-      sheet.appendRow([
-        DateFormat('yyyy-MM-dd').format(record.date),
-        record.time,
-        'Blood Sugar',
-        record.value,
-        record.unit,
-        record.mealContext,
-        '', // Systolic
-        '', // Diastolic
-      ]);
+      sheet.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
+      sheet.getRangeByIndex(i, 2).setText(record.time);
+      sheet.getRangeByIndex(i, 3).setText('Blood Sugar');
+      sheet.getRangeByIndex(i, 4).setNumber(record.value);
+      sheet.getRangeByIndex(i, 5).setText(record.unit);
+      sheet.getRangeByIndex(i, 6).setText(record.mealContext);
+      i++;
     }
     for (var record in bpRecords) {
-      sheet.appendRow([
-        DateFormat('yyyy-MM-dd').format(record.date),
-        record.time,
-        'Blood Pressure',
-        '', // Value
-        'mmHg/bpm',
-        'Pulse: ${record.pulse}',
-        record.systolic,
-        record.diastolic,
-      ]);
+      sheet.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
+      sheet.getRangeByIndex(i, 2).setText(record.time);
+      sheet.getRangeByIndex(i, 3).setText('Blood Pressure');
+      sheet.getRangeByIndex(i, 6).setText('Pulse: ${record.pulse}');
+      sheet.getRangeByIndex(i, 7).setNumber(record.systolic.toDouble());
+      sheet.getRangeByIndex(i, 8).setNumber(record.diastolic.toDouble());
+      i++;
     }
 
     // Sheet 2: Daily Averages
-    sheet = excel['Daily Averages'];
-    sheet.appendRow([
-      'Date', 'Avg Blood Sugar (mg/dL)', 'Avg Systolic (mmHg)', 'Avg Diastolic (mmHg)', 'Avg Pulse (bpm)'
-    ]);
+    final xlsio.Worksheet sheet2 = workbook.worksheets.addWithName('Daily Averages');
+    sheet2.getRangeByName('A1').setText('Date');
+    sheet2.getRangeByName('B1').setText('Avg Blood Sugar (mg/dL)');
+    sheet2.getRangeByName('C1').setText('Avg Systolic (mmHg)');
+    sheet2.getRangeByName('D1').setText('Avg Diastolic (mmHg)');
+    sheet2.getRangeByName('E1').setText('Avg Pulse (bpm)');
 
     // Group records by date and calculate averages
     final Map<DateTime, List<ReportSugarRecord>> sugarByDate = {};
@@ -375,6 +378,7 @@ class ReportGenerator {
 
     final allDates = (sugarByDate.keys.toList() + bpByDate.keys.toList()).toSet().toList()..sort();
 
+    i = 2;
     for (var date in allDates) {
       final dailySugars = sugarByDate[date] ?? [];
       final dailyBPs = bpByDate[date] ?? [];
@@ -384,59 +388,62 @@ class ReportGenerator {
       final avgDiastolic = dailyBPs.isNotEmpty ? dailyBPs.map((e) => e.diastolic).reduce((a, b) => a + b) / dailyBPs.length : null;
       final avgPulse = dailyBPs.isNotEmpty ? dailyBPs.map((e) => e.pulse).reduce((a, b) => a + b) / dailyBPs.length : null;
 
-      sheet.appendRow([
-        DateFormat('yyyy-MM-dd').format(date),
-        avgSugar?.toStringAsFixed(1) ?? 'N/A',
-        avgSystolic?.toStringAsFixed(1) ?? 'N/A',
-        avgDiastolic?.toStringAsFixed(1) ?? 'N/A',
-        avgPulse?.toStringAsFixed(1) ?? 'N/A',
-      ]);
+      sheet2.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(date));
+      if (avgSugar != null) sheet2.getRangeByIndex(i, 2).setNumber(avgSugar);
+      if (avgSystolic != null) sheet2.getRangeByIndex(i, 3).setNumber(avgSystolic);
+      if (avgDiastolic != null) sheet2.getRangeByIndex(i, 4).setNumber(avgDiastolic);
+      if (avgPulse != null) sheet2.getRangeByIndex(i, 5).setNumber(avgPulse);
+      i++;
     }
   }
 
   void _buildComparisonSummaryExcel(
-      Excel excel,
+      xlsio.Workbook workbook,
       List<ReportSugarRecord> sugarRecords,
       List<ReportBPRecord> bpRecords,
       DateTime startDate,
       DateTime endDate,
       ReportUserProfile? userProfile,
       ) {
-    Sheet sheet = excel['Detailed Data with Status'];
-    sheet.appendRow([
-      'Date', 'Time', 'Metric', 'Value', 'Unit', 'Context/Pulse', 'Systolic', 'Diastolic', 'Status'
-    ]);
+    final xlsio.Worksheet sheet = workbook.worksheets[0];
+    sheet.name = 'Detailed Data with Status';
+    sheet.getRangeByName('A1').setText('Date');
+    sheet.getRangeByName('B1').setText('Time');
+    sheet.getRangeByName('C1').setText('Metric');
+    sheet.getRangeByName('D1').setText('Value');
+    sheet.getRangeByName('E1').setText('Unit');
+    sheet.getRangeByName('F1').setText('Context/Pulse');
+    sheet.getRangeByName('G1').setText('Systolic');
+    sheet.getRangeByName('H1').setText('Diastolic');
+    sheet.getRangeByName('I1').setText('Status');
 
+    int i = 2;
     for (var record in sugarRecords) {
       final status = getSugarStatus(record.value.toInt(), record.mealContext);
-      sheet.appendRow([
-        DateFormat('yyyy-MM-dd').format(record.date),
-        record.time,
-        'Blood Sugar',
-        record.value,
-        record.unit,
-        record.mealContext,
-        '', '',
-        status,
-      ]);
+      sheet.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
+      sheet.getRangeByIndex(i, 2).setText(record.time);
+      sheet.getRangeByIndex(i, 3).setText('Blood Sugar');
+      sheet.getRangeByIndex(i, 4).setNumber(record.value);
+      sheet.getRangeByIndex(i, 5).setText(record.unit);
+      sheet.getRangeByIndex(i, 6).setText(record.mealContext);
+      sheet.getRangeByIndex(i, 9).setText(status);
+      i++;
     }
     for (var record in bpRecords) {
       final status = getBpStatus(record.systolic, record.diastolic);
-      sheet.appendRow([
-        DateFormat('yyyy-MM-dd').format(record.date),
-        record.time,
-        'Blood Pressure',
-        '', 'mmHg/bpm',
-        'Pulse: ${record.pulse}',
-        record.systolic,
-        record.diastolic,
-        status,
-      ]);
+      sheet.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
+      sheet.getRangeByIndex(i, 2).setText(record.time);
+      sheet.getRangeByIndex(i, 3).setText('Blood Pressure');
+      sheet.getRangeByIndex(i, 6).setText('Pulse: ${record.pulse}');
+      sheet.getRangeByIndex(i, 7).setNumber(record.systolic.toDouble());
+      sheet.getRangeByIndex(i, 8).setNumber(record.diastolic.toDouble());
+      sheet.getRangeByIndex(i, 9).setText(status);
+      i++;
     }
   }
 
   void _buildRiskAssessmentExcel(
-      Excel excel,
+      xlsio.Workbook workbook,
       List<ReportSugarRecord> sugarRecords,
       List<ReportBPRecord> bpRecords,
       DateTime startDate,
@@ -444,17 +451,25 @@ class ReportGenerator {
       ReportUserProfile? userProfile,
       ) {
     // TODO: Implement Risk Assessment Excel logic
-    Sheet sheet = excel['Risk Assessment Data'];
-    sheet.appendRow(['Date', 'Metric', 'Value', 'Risk Flag']);
+    final xlsio.Worksheet sheet = workbook.worksheets[0];
+    sheet.name = 'Risk Assessment Data';
+    sheet.getRangeByName('A1').setText('Date');
+    sheet.getRangeByName('B1').setText('Metric');
+    sheet.getRangeByName('C1').setText('Value');
+    sheet.getRangeByName('D1').setText('Risk Flag');
     // Example:
     // for (var record in bpRecords) {
     //   final riskFlag = getBpRiskFlag(record.systolic, record.diastolic);
-    //   sheet.appendRow([DateFormat('yyyy-MM-dd').format(record.date), 'BP', '${record.systolic}/${record.diastolic}', riskFlag]);
+    //   sheet.getRangeByIndex(i, 1).setText(DateFormat('yyyy-MM-dd').format(record.date));
+    //   sheet.getRangeByIndex(i, 2).setText('BP');
+    //   sheet.getRangeByIndex(i, 3).setText('${record.systolic}/${record.diastolic}');
+    //   sheet.getRangeByIndex(i, 4).setText(riskFlag);
+    //   i++;
     // }
   }
 
   void _buildCorrelationExcel(
-      Excel excel,
+      xlsio.Workbook workbook,
       List<ReportSugarRecord> sugarRecords,
       List<ReportBPRecord> bpRecords,
       DateTime startDate,
@@ -462,24 +477,35 @@ class ReportGenerator {
       ReportUserProfile? userProfile,
       ) {
     // TODO: Implement Correlation Excel logic
-    Sheet sheet = excel['Correlation Data'];
-    sheet.appendRow(['Date', 'Avg BMI', 'Avg Systolic', 'Avg Diastolic']);
+    final xlsio.Worksheet sheet = workbook.worksheets[0];
+    sheet.name = 'Correlation Data';
+    sheet.getRangeByName('A1').setText('Date');
+    sheet.getRangeByName('B1').setText('Avg BMI');
+    sheet.getRangeByName('C1').setText('Avg Systolic');
+    sheet.getRangeByName('D1').setText('Avg Diastolic');
     // Example:
     // Group data by date, calculate daily BMI (if weight/height changes are logged daily) and average BP
   }
 
   void _buildBodyCompositionExcel(
-      Excel excel,
+      xlsio.Workbook workbook,
       ReportUserProfile? userProfile,
       DateTime startDate,
       DateTime endDate,
       ) {
     // TODO: Implement Body Composition Excel logic
-    Sheet sheet = excel['Body Composition Log'];
-    sheet.appendRow(['Date', 'Weight (kg)', 'Height (cm)', 'BMI']);
+    final xlsio.Worksheet sheet = workbook.worksheets[0];
+    sheet.name = 'Body Composition Log';
+    sheet.getRangeByName('A1').setText('Date');
+    sheet.getRangeByName('B1').setText('Weight (kg)');
+    sheet.getRangeByName('C1').setText('Height (cm)');
+    sheet.getRangeByName('D1').setText('BMI');
     // Example:
     // if (userProfile != null) {
-    //   sheet.appendRow([DateFormat('yyyy-MM-dd').format(DateTime.now()), userProfile.weightKg, userProfile.heightCm, calculateBMI(userProfile.heightCm, userProfile.weightKg)]);
+    //   sheet.getRangeByIndex(2, 1).setText(DateFormat('yyyy-MM-dd').format(DateTime.now()));
+    //   sheet.getRangeByIndex(2, 2).setNumber(userProfile.weightKg);
+    //   sheet.getRangeByIndex(2, 3).setNumber(userProfile.heightCm);
+    //   sheet.getRangeByIndex(2, 4).setNumber(calculateBMI(userProfile.heightCm, userProfile.weightKg));
     // }
   }
 
@@ -571,9 +597,9 @@ class ReportGenerator {
     }
   }
 
-  Future<List<int>?> _encodeExcelDocument(Excel excel) async {
+  Future<List<int>?> _encodeExcelDocument(xlsio.Workbook workbook) async {
     try {
-      return excel.encode();
+      return workbook.saveAsStream();
     } catch (e) {
       print('Error encoding Excel: $e');
       return null;

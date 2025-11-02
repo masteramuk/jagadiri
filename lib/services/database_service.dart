@@ -862,79 +862,42 @@ class DatabaseService {
   }
 
   Future<void> generateAndInsertDummyData(int numRecords, DateTime startDate, DateTime endDate) async {
+    final db = await database;
+    final Random random = Random();
 
-        final db = await database;
+    for (int i = 0; i < numRecords; i++) {
+      // Generate a random date within the date range
+      final randomDay = random.nextInt(endDate.difference(startDate).inDays + 1);
+      final randomDate = startDate.add(Duration(days: randomDay));
 
-        final Random random = Random();
+      // Generate a random time
+      final randomTime = TimeOfDay(hour: random.nextInt(24), minute: random.nextInt(60));
 
-    
+      // Generate a random sugar record
+      final sugarRecord = SugarRecord(
+        date: randomDate,
+        time: randomTime,
+        mealTimeCategory: MealTimeCategory.values[random.nextInt(MealTimeCategory.values.length)],
+        mealType: MealType.values[random.nextInt(MealType.values.length)],
+        value: 70 + random.nextDouble() * 130, // Random value between 70 and 200
+        status: SugarStatus.values[random.nextInt(SugarStatus.values.length)],
+        notes: 'sample_data',
+      );
+      await db.insert('sugar_records', sugarRecord.toDbMap());
 
-        for (int i = 0; i < numRecords; i++) {
-
-          // Generate a random date within the date range
-
-          final randomDay = random.nextInt(endDate.difference(startDate).inDays + 1);
-
-          final randomDate = startDate.add(Duration(days: randomDay));
-
-    
-
-          // Generate a random time
-
-          final randomTime = TimeOfDay(hour: random.nextInt(24), minute: random.nextInt(60));
-
-    
-
-          // Generate a random sugar record
-
-          final sugarRecord = SugarRecord(
-
-            date: randomDate,
-
-            time: randomTime,
-
-            mealTimeCategory: MealTimeCategory.values[random.nextInt(MealTimeCategory.values.length)],
-
-            mealType: MealType.values[random.nextInt(MealType.values.length)],
-
-            value: 70 + random.nextDouble() * 130, // Random value between 70 and 200
-
-            status: SugarStatus.good,
-
-            notes: 'sample_data',
-
-          );
-
-          await db.insert('sugar_records', sugarRecord.toDbMap());
-
-    
-
-          // Generate a random BP record
-
-          final bpRecord = BPRecord(
-
-            date: randomDate,
-
-            time: randomTime,
-
-            timeName: BPTimeName.values[random.nextInt(BPTimeName.values.length)],
-
-            systolic: 100 + random.nextInt(80), // Random value between 100 and 180
-
-            diastolic: 60 + random.nextInt(40), // Random value between 60 and 100
-
-            pulseRate: 60 + random.nextInt(40), // Random value between 60 and 100
-
-            status: BPStatus.normal,
-
-            notes: 'sample_data',
-
-          );
-
-          await db.insert('bp_records', bpRecord.toDbMap());
-
-        }
-
-      }
+      // Generate a random BP record
+      final bpRecord = BPRecord(
+        date: randomDate,
+        time: randomTime,
+        timeName: BPTimeName.values[random.nextInt(BPTimeName.values.length)],
+        systolic: 100 + random.nextInt(80), // Random value between 100 and 180
+        diastolic: 60 + random.nextInt(40), // Random value between 60 and 100
+        pulseRate: 60 + random.nextInt(40), // Random value between 60 and 100
+        status: BPStatus.values[random.nextInt(BPStatus.values.length)],
+        notes: 'sample_data',
+      );
+      await db.insert('bp_records', bpRecord.toDbMap());
+    }
+  }
 
     }

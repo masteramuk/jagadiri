@@ -49,9 +49,9 @@ Future<void> main(List<String> arguments) async {
         random.nextInt(24), random.nextInt(60));
 
     //Extract the hour and minute to create a TimeOfDay object
-    final TimeOfDay timeOfDay = TimeOfDay(
+    final timeOfDay = TimeOfDay(
         hour: randomTime.hour,
-        minute: randomTime.minute
+        minute: randomTime.minute,
     );
 
     // Generate a random sugar record
@@ -59,9 +59,9 @@ Future<void> main(List<String> arguments) async {
       date: randomDate,
       time: timeOfDay,
       mealTimeCategory: MealTimeCategory.values[random.nextInt(MealTimeCategory.values.length)],
-      mealType: 'Sample Meal',
+      mealType: MealType.values[random.nextInt(MealType.values.length)],
       value: 70 + random.nextDouble() * 130, // Random value between 70 and 200
-      status: SugarStatus.normal,
+      status: SugarStatus.values[random.nextInt(SugarStatus.values.length)],
       notes: 'sample_data',
     );
     await db.insert('sugar_records', sugarRecord.toDbMap());
@@ -74,7 +74,7 @@ Future<void> main(List<String> arguments) async {
       systolic: 100 + random.nextInt(80), // Random value between 100 and 180
       diastolic: 60 + random.nextInt(40), // Random value between 60 and 100
       pulseRate: 60 + random.nextInt(40), // Random value between 60 and 100
-      status: BPStatus.normal,
+      status: BPStatus.values[random.nextInt(BPStatus.values.length)],
       notes: 'sample_data',
     );
     await db.insert('bp_records', bpRecord.toDbMap());
