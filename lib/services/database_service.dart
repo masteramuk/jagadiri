@@ -861,7 +861,7 @@ class DatabaseService {
     return nlgTemplates;
   }
 
-  Future<void> generateAndInsertDummyData(int numRecords, DateTime startDate, DateTime endDate) async {
+  Future<void> generateAndInsertDummyData(int numRecords, DateTime startDate, DateTime endDate, String measurementUnit) async {
     final db = await database;
     final Random random = Random();
 
@@ -873,13 +873,21 @@ class DatabaseService {
       // Generate a random time
       final randomTime = TimeOfDay(hour: random.nextInt(24), minute: random.nextInt(60));
 
+      // Generate a random sugar value based on the measurement unit
+      double sugarValue;
+      if (measurementUnit == 'Metric') {
+        sugarValue = 3.0 + random.nextDouble() * 12.0; // Range for mmol/L
+      } else { // US units
+        sugarValue = 70 + random.nextDouble() * 130; // Range for mg/dL
+      }
+
       // Generate a random sugar record
       final sugarRecord = SugarRecord(
         date: randomDate,
         time: randomTime,
         mealTimeCategory: MealTimeCategory.values[random.nextInt(MealTimeCategory.values.length)],
         mealType: MealType.values[random.nextInt(MealType.values.length)],
-        value: 70 + random.nextDouble() * 130, // Random value between 70 and 200
+        value: sugarValue,
         status: SugarStatus.values[random.nextInt(SugarStatus.values.length)],
         notes: 'sample_data',
       );

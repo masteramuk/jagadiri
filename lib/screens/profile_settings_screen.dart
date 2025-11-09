@@ -299,100 +299,99 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       context: context,
       barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Generate Sample Data'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: ListBody(
-                children: <Widget>[
-                  TextFormField(
-                    initialValue: numRecords.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Number of records'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the number of records';
-                      }
-                      if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      numRecords = int.parse(value!);
-                    },
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: isStartDate ? startDate : endDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2101),
+              );
+              if (picked != null) {
+                setState(() {
+                  if (isStartDate) {
+                    startDate = picked;
+                  } else {
+                    endDate = picked;
+                  }
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Generate Sample Data'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: ListBody(
+                    children: <Widget>[
+                      TextFormField(
+                        initialValue: numRecords.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Number of records'),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter the number of records';
+                          }
+                          if (int.tryParse(value) == null) {
+                            return 'Please enter a valid number';
+                          }
+                          return null;
+                        },
+                        onSaved: (value) {
+                          numRecords = int.parse(value!);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        title: const Text("Start Date"),
+                        subtitle: Text(DateFormat('dd-MM-yyyy').format(startDate)),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () => _selectDate(context, true),
+                      ),
+                      ListTile(
+                        title: const Text("End Date"),
+                        subtitle: Text(DateFormat('dd-MM-yyyy').format(endDate)),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () => _selectDate(context, false),
+                      ),
+                    ],
                   ),
-                  TextFormField(
-                    initialValue: DateFormat('yyyy-MM-dd').format(startDate),
-                    decoration: const InputDecoration(labelText: 'Start date (YYYY-MM-DD)'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the start date';
-                      }
-                      try {
-                        DateTime.parse(value);
-                      } catch (e) {
-                        return 'Invalid date format';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      startDate = DateTime.parse(value!);
-                    },
-                  ),
-                  TextFormField(
-                    initialValue: DateFormat('yyyy-MM-dd').format(endDate),
-                    decoration: const InputDecoration(labelText: 'End date (YYYY-MM-DD)'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the end date';
-                      }
-                      try {
-                        DateTime.parse(value);
-                      } catch (e) {
-                        return 'Invalid date format';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      endDate = DateTime.parse(value!);
-                    },
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Generate'),
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  _formKey.currentState!.save();
-                  Navigator.of(context).pop();
-                  _generateSampleData(numRecords, startDate, endDate);
-                }
-              },
-            ),
-          ],
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('Generate'),
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      _formKey.currentState!.save();
+                      Navigator.of(context).pop();
+                      _generateSampleData(numRecords, startDate, endDate, _selectedMeasurementUnit);
+                    }
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _generateSampleData(int numRecords, DateTime startDate, DateTime endDate) async {
+  Future<void> _generateSampleData(int numRecords, DateTime startDate, DateTime endDate, String measurementUnit) async {
     setState(() => _isProcessing = true);
     final databaseService = Provider.of<DatabaseService>(context, listen: false);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      await databaseService.generateAndInsertDummyData(numRecords, startDate, endDate);
+      await databaseService.generateAndInsertDummyData(numRecords, startDate, endDate, measurementUnit);
       scaffoldMessenger.showSnackBar(SnackBar(content: Text('$numRecords sample records added successfully!')));
     } catch (e) {
       scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error generating data: $e')));
