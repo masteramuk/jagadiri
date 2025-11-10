@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import '../models/bp_record.dart';
 import '../models/sugar_record.dart';
 import '../models/user_profile.dart';
+import '../utils/string_utils.dart'; // Import StringUtils
 import 'health_analysis_service.dart';
 import 'individual_health_trend_chart_generator.dart';
 
@@ -222,7 +223,7 @@ class IndividualHealthTrendService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Text('🩺', style: pw.TextStyle(fontSize: 40, fontFallback: [if (fallbackFont != null) fallbackFont])),
+        pw.Text(StringUtils.removeEmojiVariationSelectors('🩺'), style: pw.TextStyle(fontSize: 40, fontFallback: [if (fallbackFont != null) fallbackFont])),
         pw.SizedBox(height: 8),
         pw.Text(
           'Individual Health Trend Analysis Report',
@@ -327,7 +328,7 @@ class IndividualHealthTrendService {
           )),
           pw.Divider(height: 10, thickness: 1),
           pw.Paragraph(
-            text: analysisText,
+            text: StringUtils.removeEmojiVariationSelectors(analysisText),
             style: const pw.TextStyle(lineSpacing: _lineSpacing).copyWith(
               fontFallback: [if (fallbackFont != null) fallbackFont],
             ),
