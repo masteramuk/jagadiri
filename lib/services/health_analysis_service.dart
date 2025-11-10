@@ -48,7 +48,7 @@ class HealthAnalysisService {
     final fastingReadings = _sugarReadings.where((r) => r.mealTimeCategory == MealTimeCategory.before).toList();
     final postMealReadings = _sugarReadings.where((r) => r.mealTimeCategory == MealTimeCategory.after).toList();
 
-    buffer.writeln("🩸 Glucose Insights:");
+    buffer.writeln("🔴 Glucose Insights:");
     buffer.writeln("Your average glucose is ${avgGlucose.toStringAsFixed(1)} mg/dL.");
 
     // Classification based on fasting glucose if available
@@ -85,7 +85,7 @@ class HealthAnalysisService {
     final avgSystolic = _bpReadings.map((r) => r.systolic).average.round();
     final avgDiastolic = _bpReadings.map((r) => r.diastolic).average.round();
 
-    buffer.writeln("❤ Blood Pressure Insights:");
+    buffer.writeln("❤️ Blood Pressure Insights:");
     buffer.writeln("Your average BP is **$avgSystolic/$avgDiastolic mmHg**.");
 
     // AHA Classification
@@ -124,7 +124,7 @@ class HealthAnalysisService {
     final buffer = StringBuffer();
     final avgPulse = _bpReadings.map((r) => r.pulseRate).average.round();
 
-    buffer.writeln("💓 Pulse Rate Insights:");
+    buffer.writeln("❤️ Pulse Rate Insights:");
     buffer.writeln("Your average resting pulse is **$avgPulse bpm**.");
 
     if (avgPulse < 60) {
@@ -142,7 +142,7 @@ class HealthAnalysisService {
     if (_sugarReadings.isEmpty) return "";
 
     final buffer = StringBuffer();
-    buffer.writeln("📈 Trends & Fluctuations:");
+    buffer.writeln("📊 Trends & Fluctuations:");
 
     // Simple trend detection (comparing first half vs second half)
     if (_sugarReadings.length > 4) {
@@ -198,11 +198,11 @@ class HealthAnalysisService {
 
   String _getWellnessTips() {
     const tips = [
-      "💧 Morning hydration can help regulate blood pressure throughout the day.",
-      "🥗 A fiber-rich breakfast can stabilize your morning glucose levels.",
-      "🚶 A short 10-minute walk after meals can do wonders for your blood sugar.",
-      "🧘 Deep breathing exercises for 5 minutes can help lower stress and your pulse rate.",
-      "😴 Aim for 7-8 hours of quality sleep to improve insulin sensitivity."
+      "💦 Morning hydration can help regulate blood pressure throughout the day.",
+      "🍎 A fiber-rich breakfast can stabilize your morning glucose levels.",
+      "🏃 A short 10-minute walk after meals can do wonders for your blood sugar.",
+      "🙏 Deep breathing exercises for 5 minutes can help lower stress and your pulse rate.",
+      "💤 Aim for 7-8 hours of quality sleep to improve insulin sensitivity."
     ];
     return tips[_random.nextInt(tips.length)];
   }

@@ -223,7 +223,7 @@ class IndividualHealthTrendService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Text(StringUtils.removeEmojiVariationSelectors('🩺'), style: pw.TextStyle(fontSize: 40, fontFallback: [if (fallbackFont != null) fallbackFont])),
+        pw.Text(StringUtils.removeEmojiVariationSelectors('⚕️'), style: pw.TextStyle(fontSize: 40, fontFallback: [if (fallbackFont != null) fallbackFont])),
         pw.SizedBox(height: 8),
         pw.Text(
           'Individual Health Trend Analysis Report',
